@@ -1,0 +1,1 @@
+# Spinnaker Multiple Pipelines plugin development
