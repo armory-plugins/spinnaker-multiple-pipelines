@@ -7,12 +7,15 @@ on:
   pull_request:
 
 jobs:
-  build:
+ 
+  Test:
+
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/setup-java@v1
-        with:
-          java-version: 11
+    - uses: actions/checkout@v2
+
+    - name: Check Java version
+      run: java --version
 
    
