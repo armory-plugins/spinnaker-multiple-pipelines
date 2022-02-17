@@ -14,3 +14,6 @@ gradle-app.setting
 *.class
 
 .DS_Store
+
+# GHA reference 
+.github/workflows/reference.yaml
