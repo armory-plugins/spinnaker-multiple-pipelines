@@ -1,0 +1,3 @@
+rootProject.name = 'spinnaker-multiple-pipelines'
+include 'orca-run-multiple-pipelines'
+

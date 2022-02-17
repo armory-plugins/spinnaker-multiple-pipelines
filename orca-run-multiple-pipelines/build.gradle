@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id "io.spinnaker.plugin.service-extension"
+}
+
+group 'io.armory.plugin.smp'
+version '0.0.1'
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://armory.jfrog.io/armory/gradle-dev-local/'
+        credentials(HttpHeaderCredentials) {
+            name = "X-JFrog-Art-Api"
+            value = "${artifactory_token}"
+        }
+        authentication {
+            header(HttpHeaderAuthentication)
+        }
+    }
+}
+
+spinnakerPlugin {
+    serviceName = "orca"
+    pluginClass = "io.armory.plugin.smp.RunMultiplePipelinesPlugin"
+}
+
+dependencies {
+    compileOnly(group: 'org.pf4j', name: 'pf4j', version: "${pf4jVersion}")
+    compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
+    compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
+    compileOnly "io.spinnaker.kork:kork-artifacts:${korkVersion}"
+
+    compileOnly(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
+    annotationProcessor(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+}
+
+test {
+    useJUnitPlatform()
+}
