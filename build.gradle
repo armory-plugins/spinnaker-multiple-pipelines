@@ -1,0 +1,28 @@
+buildscript {
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+}
+
+plugins {
+    id("io.spinnaker.plugin.bundler").version("$spinnakerGradleVersion")
+}
+
+version '0.0.1'
+
+spinnakerBundle {
+    pluginId = "Armory.RunMultitplePipelines"
+    description = ""
+    provider = "https://armory.io"
+    version = rootProject.version
+}
+
+subprojects { project ->
+    group = "io.armory.plugin.smp"
+    version = rootProject.version
+    apply plugin: "maven-publish"
+}
+
+task version() {
+    println(version)
+}
