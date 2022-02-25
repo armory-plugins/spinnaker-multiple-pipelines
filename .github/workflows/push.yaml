@@ -21,6 +21,3 @@ jobs:
     
     - name: Release
       run: ./gradlew releaseBundle
-
-       
-   
