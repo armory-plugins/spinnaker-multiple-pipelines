@@ -23,10 +23,12 @@ import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import io.armory.plugin.smp.config.RunMultiplePipelinesConfig;
 import io.armory.plugin.smp.config.RunMultiplePipelinesContext;
 import org.jetbrains.annotations.NotNull;
+import org.pf4j.Extension;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 
+@Extension
 public class RunMultiplePipelinesTask implements Task {
 
     private RunMultiplePipelinesConfig config;

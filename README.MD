@@ -22,3 +22,27 @@ spinnaker:
 ```
 5) Create a new IntelliJ run configuration for the service that has the VM option `-Dpf4j.mode=development` and does a `Build Project` before launch.
 6) Debug away...
+
+# UI Plugin Development
+
+1) Run `yarn && yarn build` inside the plugin project <deck-run-multiple-pipelines>.
+2) Clone the spinnaker deck repo `git clone git@github.com:spinnaker/deck.git` and create a directory plugins inside the project.
+3) Make a symbolic link with the index.js file generated to the deck repo `sudo ln -sf ~/<git-clone-directory>/spinnaker-multiple-pipelines/deck-run-multiple-pipelines/build/dist/index.js ~/<git-clone-directory>/deck/plugins/index.js`.
+4) On deck project edit ~/<git-clone-directory>/deck/packages/app/public/plugin-manifest.json file to:
+```
+[
+    {
+        "id": "Armory.RunMultiplePipelinesPlugin",
+        "url": "./plugins/index.js",
+        "version": "1.0.0"
+    }
+]
+```
+5) Run the following command on deck project:
+- `yarn`
+- `yarn modules`
+- `yarn start`
+
+6) Deck Project is running at http://localhost:9000/
+7) And finally with Port forward to access gate you should see a new stage called Run Multiple Pipelines.
+

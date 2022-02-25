@@ -1,0 +1,39 @@
+{
+  "name": "deck-run-multiple-pipelines",
+  "version": "1.0.0",
+  "private": true,
+  "module": "build/dist/index.js",
+  "scripts": {
+    "clean": "npx shx rm -rf build",
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "postinstall": "check-plugin && check-peer-dependencies || true",
+    "proxy": "dev-proxy"
+  },
+  "dependencies": {
+    "@spinnaker/core": "0.11.1",
+    "@spinnaker/pluginsdk": "0.0.32",
+    "bufferutil": "4.0.1",
+    "lodash": "4.17.21",
+    "react": "16.8.6",
+    "react-ace": "6.4.0",
+    "react-dom": "16.8.6",
+    "js-yaml": "3.13.1"
+  },
+  "devDependencies": {
+    "@spinnaker/eslint-plugin": "1.0.7",
+    "@types/react": "16.8.25",
+    "@types/lodash": "4.14.64",
+    "@typescript-eslint/eslint-plugin": "2.26.0",
+    "@typescript-eslint/parser": "2.26.0",
+    "eslint": "6.8.0",
+    "eslint-config-prettier": "6.10.1",
+    "eslint-plugin-react-hooks": "3.0.0",
+    "rollup": "2.30.0",
+    "shx": "0.3.2",
+    "typescript": "3.8.3"
+  },
+  "files": [
+    "build/dist"
+  ]
+}

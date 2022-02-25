@@ -14,6 +14,11 @@ gradle-app.setting
 *.class
 
 .DS_Store
+<<<<<<< HEAD
 
 # GHA reference 
 .github/workflows/reference.yaml
+=======
+node_modules
+.husky
+>>>>>>> 82625883ed7567c5a37f697080256a018d17f9ed
