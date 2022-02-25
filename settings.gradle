@@ -1,3 +1,4 @@
 rootProject.name = 'spinnaker-multiple-pipelines'
 include 'orca-run-multiple-pipelines'
+include 'deck-run-multiple-pipelines'
 
