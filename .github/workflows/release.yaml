@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GRADLE_ARGS: -Partifactory_user=${{secrets.ARTIFACTORY_USER}} -Partifactory_password=${{secrets.ARTIFACTORY_TOKEN}}
+      ORG_GRADLE_PROJECT_artifactory_token: '${{secrets.ARTIFACTORY_TOKEN}}'
    
     steps:
       - name: Checkout code
@@ -24,10 +24,10 @@ jobs:
           java-version: 11
      
       - name: Run tests
-        run: ./gradlew test $GRADLE_ARGS
+        run: ./gradlew test
       
       - name: Build
-        run: ./gradlew releaseBundle $GRADLE_ARGS
+        run: ./gradlew releaseBundle
       
       - name: Archive build artifacts
         uses: actions/upload-artifact@v1
