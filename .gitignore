@@ -15,3 +15,5 @@ gradle-app.setting
 .DS_Store
 node_modules
 .husky
+
+.vscode
