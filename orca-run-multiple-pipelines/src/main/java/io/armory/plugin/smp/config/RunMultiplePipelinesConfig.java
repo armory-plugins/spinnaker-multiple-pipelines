@@ -22,5 +22,5 @@ import lombok.Data;
 @Data
 @PluginConfiguration
 public class RunMultiplePipelinesConfig {
-    private String message;
+    private String YAML;
 }

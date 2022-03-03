@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-package io.armory.plugin.smp.config;
+package io.armory.plugin.smp.parseyml;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
-import javax.annotation.Nullable;
-import java.util.List;
-import java.util.Map;
+@Getter
+@Setter
+public class App {
+    @JsonProperty("child_pipeline")
+    private String childPipeline;
 
-@Data
-public class RunMultiplePipelinesContext {
-    @Nullable
-    private List<Map<Object, Object>> yamlConfig;
+    @JsonProperty("name")
+    private String name;
 
-    @Nullable
-    private Map<Object, Object> expressionEvaluationSummary;
+    @JsonProperty("targetEnv")
+    private String targetEnv;
 }

@@ -16,7 +16,7 @@ export class RunMultiplePipelinesStageExecutionDetails extends React.Component<I
     return (
       <ExecutionDetailsSection name={this.props.name} current={this.props.current}>
         <div>
-          <p>Message: {this.props.stage.outputs.message}</p>
+          <p>Message: {this.props.stage.outputs.my_message}</p>
         </div>
       </ExecutionDetailsSection>
     );

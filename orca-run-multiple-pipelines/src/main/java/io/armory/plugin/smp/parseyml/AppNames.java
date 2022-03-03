@@ -14,19 +14,23 @@
  * limitations under the License.
  */
 
-package io.armory.plugin.smp.config;
+package io.armory.plugin.smp.parseyml;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import lombok.Getter;
+import lombok.Setter;
 
-import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@Data
-public class RunMultiplePipelinesContext {
-    @Nullable
-    private List<Map<Object, Object>> yamlConfig;
+@Getter
+@Setter
+public class AppNames {
+    private List<Map<String, String>> apps = new ArrayList<Map<String, String>>();
 
-    @Nullable
-    private Map<Object, Object> expressionEvaluationSummary;
+    @JsonAnySetter
+    public void setDynamicProperty(String name, Map<String, String> map) {
+        apps.add(map);
+    }
 }
