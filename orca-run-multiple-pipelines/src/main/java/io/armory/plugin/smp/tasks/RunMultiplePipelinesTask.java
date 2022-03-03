@@ -110,8 +110,10 @@ public class RunMultiplePipelinesTask implements Task {
         ArrayList<Map<String, Object>> parameters = new ArrayList<>();
         for (App app: apps) {
             Map<String, Object> params = new HashMap<>();
-            params.put("name", app.getName());
+            params.put("app", app.getApp());
             params.put("targetEnv", app.getTargetEnv());
+            params.put("tag", app.getTag());
+            params.put("skipCanary", app.getSkipCanary());
             parameters.add(params);
         }
         return parameters;

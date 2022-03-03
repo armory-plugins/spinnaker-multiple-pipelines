@@ -26,9 +26,15 @@ public class App {
     @JsonProperty("child_pipeline")
     private String childPipeline;
 
-    @JsonProperty("name")
-    private String name;
+    @JsonProperty("app")
+    private String app;
 
     @JsonProperty("targetEnv")
     private String targetEnv;
+
+    @JsonProperty("tag")
+    private String tag;
+
+    @JsonProperty("skipCanary")
+    private Boolean skipCanary;
 }
