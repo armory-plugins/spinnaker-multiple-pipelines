@@ -24,7 +24,6 @@ import java.util.Map;
 
 @Data
 public class RunMultiplePipelinesContext {
-    @Nullable
     private List<Map<Object, Object>> yamlConfig;
 
     @Nullable

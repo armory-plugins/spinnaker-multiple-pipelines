@@ -20,21 +20,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+import java.util.Map;
+
 @Getter
 @Setter
 public class App {
+    @JsonProperty("arguments")
+    private Map<String, Object> arguments;
+
     @JsonProperty("child_pipeline")
     private String childPipeline;
 
-    @JsonProperty("app")
-    private String app;
-
-    @JsonProperty("targetEnv")
-    private String targetEnv;
-
-    @JsonProperty("tag")
-    private String tag;
-
-    @JsonProperty("skipCanary")
-    private Boolean skipCanary;
+    @JsonProperty("depends_on")
+    private List<String> dependsOn;
 }

@@ -17,20 +17,23 @@
 package io.armory.plugin.smp.parseyml;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Getter
 @Setter
-public class AppNames {
-    private List<Map<String, String>> apps = new ArrayList<Map<String, String>>();
+public class Apps {
+    private Map<String, Object> apps = new LinkedHashMap<>();
+
+    @JsonProperty("rollback_onfailure")
+    private boolean rollbackOnFailure;
 
     @JsonAnySetter
-    public void setDynamicProperty(String name, Map<String, String> map) {
-        apps.add(map);
+    void setApps(String key, Object value) {
+        apps.put(key, value);
     }
 }
