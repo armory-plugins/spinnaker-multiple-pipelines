@@ -21,11 +21,10 @@ import com.google.gson.reflect.TypeToken;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
-import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.front50.Front50Service;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
-import com.netflix.spinnaker.security.AuthenticatedRequest;
+import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
 import io.armory.plugin.smp.config.RunMultiplePipelinesConfig;
 import io.armory.plugin.smp.config.RunMultiplePipelinesContext;
 import javax.annotation.Nonnull;
@@ -51,12 +50,14 @@ public class RunMultiplePipelinesTask implements Task {
     private final Front50Service front50Service;
     private final DependentPipelineStarter dependentPipelineStarter;
     private final RunMultiplePipelinesConfig config;
+    private final ExecutionRepository executionRepository;
 
-    public RunMultiplePipelinesTask(final RunMultiplePipelinesConfig config, Optional<Front50Service>front50Service,
-                                    DependentPipelineStarter dependentPipelineStarter)  {
+    public RunMultiplePipelinesTask(final RunMultiplePipelinesConfig config, Optional<Front50Service> front50Service,
+                                    DependentPipelineStarter dependentPipelineStarter, ExecutionRepository executionRepository)  {
         this.config = config;
         this.front50Service = front50Service.orElse(null);
         this.dependentPipelineStarter = dependentPipelineStarter;
+        this.executionRepository = executionRepository;
     }
 
     private final Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesTask.class);
@@ -73,11 +74,6 @@ public class RunMultiplePipelinesTask implements Task {
         List<String> triggerOrder = utilityHelper.getTriggerOrder(context, appOrder);
         utilityHelper.sortAppOrderToTriggerOrder(appOrder, triggerOrder);
 
-        appOrder.forEach(a -> {
-            //        triggerPipelineFunction
-            System.out.println(a.getArguments().get("app"));
-        });
-
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
         if (front50Service.equals(null)) {
             throw new UnsupportedOperationException("Cannot start a stored pipeline, front50 is not enabled. Fix this by setting front50.enabled: true");
@@ -86,20 +82,17 @@ public class RunMultiplePipelinesTask implements Task {
         List<Map<String, Object>> pipelines = front50Service.getPipelines(application, false);
         List<Map<String, Object>> pipelineConfigs = utilityHelper.getPipelineConfigs(appOrder, pipelines);
 
-//        List<Map<String, Object>> parameters = getParameters(appOrder);
-
         for (int i = 0; i < pipelineConfigs.size(); i++) {
             String jsonString = gson.toJson(pipelineConfigs.get(i));
             Type type = new TypeToken<HashMap<String, Object>>(){}.getType();
             Map<String, Object> pipelineConfigCopy = gson.fromJson(jsonString, type);
-            dependentPipelineStarter.trigger(
+            TriggerInOrder triggerInOrder = new TriggerInOrder(
                     pipelineConfigCopy,
-                    stage.getExecution().getAuthentication().getUser(),
-                    stage.getExecution(),
-                    appOrder.get(i).getArguments(),
-                    stage.getId(),
-                    getUser(stage.getExecution())
-            );
+                    stage,
+                    appOrder.get(i),
+                    dependentPipelineStarter,
+                    executionRepository);
+            triggerInOrder.run();
         }
 
         return TaskResult
@@ -108,43 +101,4 @@ public class RunMultiplePipelinesTask implements Task {
                 .build();
     }
 
-//    private List<Map<String, Object>> getParameters(List<App> apps) {
-//        ArrayList<Map<String, Object>> parameters = new ArrayList<>();
-//        for (App app: apps) {
-//            Map<String, Object> params = new HashMap<>();
-//            params.put("app", app.getApp());
-//            params.put("targetEnv", app.getTargetEnv());
-//            params.put("tag", app.getTag());
-//            params.put("skipCanary", app.getSkipCanary());
-//            parameters.add(params);
-//        }
-//        return parameters;
-//    }
-
-//    private List<App> getApps(String json) throws IOException {
-//        ObjectMapper mapper = new ObjectMapper();
-//        BundleWeb bundleWeb = mapper.readValue(json, BundleWeb.class);
-//        Apps appNames = bundleWeb.getAppNames();
-//        List<Map<String, String>> appMaps = appNames.getApps();
-//
-//        List<App> apps = new ArrayList<App>(appMaps.size());
-//        for (Map<String, String> item : appMaps) {
-//            apps.add(mapper.convertValue(item, App.class));
-//        }
-//        return apps;
-//    }
-
-    private PipelineExecution.AuthenticationDetails getUser(PipelineExecution parentPipeline) {
-        Optional<String> korkUsername = AuthenticatedRequest.getSpinnakerUser();
-        if (korkUsername.isPresent()) {
-            String korkAccounts = AuthenticatedRequest.getSpinnakerAccounts().orElse("");
-            return new PipelineExecution.AuthenticationDetails(korkUsername.get(), korkAccounts.split(","));
-        }
-
-        if (parentPipeline.getAuthentication().getUser() != null) {
-            return parentPipeline.getAuthentication();
-        }
-
-        return null;
-    }
 }
