@@ -16,6 +16,7 @@
 
 package io.armory.plugin.smp.tasks;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
@@ -31,6 +32,7 @@ import javax.annotation.Nonnull;
 
 import io.armory.plugin.smp.config.UtilityHelper;
 import io.armory.plugin.smp.parseyml.App;
+import io.armory.plugin.smp.parseyml.Apps;
 import lombok.SneakyThrows;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
@@ -67,11 +69,14 @@ public class RunMultiplePipelinesTask implements Task {
     @Override
     public TaskResult execute(@Nonnull StageExecution stage) {
         RunMultiplePipelinesContext context = stage.mapTo(RunMultiplePipelinesContext.class);
-        UtilityHelper utilityHelper = new UtilityHelper();
         Gson gson = new Gson();
+        ObjectMapper mapper = new ObjectMapper();
+        UtilityHelper utilityHelper = new UtilityHelper();
+
+        Apps apps = utilityHelper.getApps(context, gson, mapper);
 
         List<App> appOrder = new LinkedList<>();
-        List<String> triggerOrder = utilityHelper.getTriggerOrder(context, appOrder);
+        List<String> triggerOrder = utilityHelper.getTriggerOrder(apps, appOrder, gson, mapper);
         utilityHelper.sortAppOrderToTriggerOrder(appOrder, triggerOrder);
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
@@ -81,6 +86,8 @@ public class RunMultiplePipelinesTask implements Task {
 
         List<Map<String, Object>> pipelines = front50Service.getPipelines(application, false);
         List<Map<String, Object>> pipelineConfigs = utilityHelper.getPipelineConfigs(appOrder, pipelines);
+        List<ExecutionStatus> executionStatuses = new LinkedList<>();
+        ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
         for (int i = 0; i < pipelineConfigs.size(); i++) {
             String jsonString = gson.toJson(pipelineConfigs.get(i));
@@ -93,10 +100,18 @@ public class RunMultiplePipelinesTask implements Task {
                     dependentPipelineStarter,
                     executionRepository);
             triggerInOrder.run();
+            executionStatuses.add(triggerInOrder.getExecutionStatus());
+            if (triggerInOrder.getExecutionStatus() != ExecutionStatus.SUCCEEDED) {
+                returnExecutionStatus = triggerInOrder.getExecutionStatus();
+                break;
+            }
         }
 
+        boolean rollbackOnFailure = apps.isRollbackOnFailure();
+        System.out.println(rollbackOnFailure);
+
         return TaskResult
-                .builder(ExecutionStatus.SUCCEEDED)
+                .builder(returnExecutionStatus)
                 .outputs(Collections.singletonMap("my_message", "Hola"))
                 .build();
     }

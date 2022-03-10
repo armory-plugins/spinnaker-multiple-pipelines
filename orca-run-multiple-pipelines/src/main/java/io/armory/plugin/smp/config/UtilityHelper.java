@@ -32,16 +32,11 @@ import java.util.Map;
 
 public class UtilityHelper {
 
-    public List<String> getTriggerOrder(RunMultiplePipelinesContext context,
-                                        List<App> appOrder) throws JsonProcessingException {
+    public List<String> getTriggerOrder(Apps apps,
+                                        List<App> appOrder,
+                                        Gson gson,
+                                        ObjectMapper mapper) throws JsonProcessingException {
         List<String> triggerOrder = new LinkedList<>();
-        Gson gson = new Gson();
-        String json = gson.toJson(context.getYamlConfig().get(0));
-        ObjectMapper mapper = new ObjectMapper();
-        BundleWeb bundleWeb = mapper.readValue(json, BundleWeb.class);
-
-        String jsonApps = gson.toJson(bundleWeb.getBundleWeb());
-        Apps apps = mapper.readValue(jsonApps, Apps.class);
 
         for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
             Map<String, Object> mapApp = Map.ofEntries(entry);
@@ -95,5 +90,16 @@ public class UtilityHelper {
         }
         return pipelineConfigs;
     }
+
+    public Apps getApps(RunMultiplePipelinesContext context, Gson gson, ObjectMapper mapper) throws JsonProcessingException {
+        String json = gson.toJson(context.getYamlConfig().get(0));
+        BundleWeb bundleWeb = mapper.readValue(json, BundleWeb.class);
+
+        String jsonApps = gson.toJson(bundleWeb.getBundleWeb());
+        Apps apps = mapper.readValue(jsonApps, Apps.class);
+        return apps;
+    }
+
+
 
 }
