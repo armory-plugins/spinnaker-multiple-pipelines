@@ -1,0 +1,34 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+
+  Build:
+
+    name: Build Plugin
+    runs-on: ubuntu-latest
+
+    env:
+      ORG_GRADLE_PROJECT_artifactory_token: '${{secrets.ARTIFACTORY_TOKEN}}'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Run tests
+        run: ./gradlew test
+     
+      - name: Build
+        run: ./gradlew releaseBundle
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: dist
+          path: build/distributions
