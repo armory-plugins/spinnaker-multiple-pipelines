@@ -2,10 +2,18 @@ plugins {
     id 'java'
     id 'maven-publish'
     id "io.spinnaker.plugin.service-extension"
+    id "kotlin"
 }
 
 group 'io.armory.plugin.smp'
 version '0.0.1'
+
+compileTestKotlin {
+    kotlinOptions {
+        languageVersion = "1.3"
+        jvmTarget = "11"
+    }
+}
 
 repositories {
     mavenCentral()
@@ -49,8 +57,24 @@ dependencies {
     compileOnly(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
     annotationProcessor(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testImplementation(platform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
+    testImplementation "io.spinnaker.orca:orca-api"
+    testImplementation "io.spinnaker.orca:orca-api-tck"
+    testImplementation "io.spinnaker.orca:orca-queue"
+    testImplementation "io.spinnaker.kork:kork-plugins-tck"
+
+    testImplementation 'org.spockframework:spock-core:2.1-groovy-3.0'
+    testImplementation 'com.google.code.gson:gson:2.9.0'
+    testImplementation "io.strikt:strikt-core:0.31.0"
+    testImplementation "dev.minutest:minutest:1.13.0"
+    testImplementation "io.mockk:mockk:1.9.3"
+    testImplementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.11.1"
+    testImplementation "javax.servlet:javax.servlet-api:4.0.1"
+    testImplementation "io.spinnaker.orca:orca-front50:${orcaVersion}"
+
+    testRuntime 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntime 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
 }
 
 test {

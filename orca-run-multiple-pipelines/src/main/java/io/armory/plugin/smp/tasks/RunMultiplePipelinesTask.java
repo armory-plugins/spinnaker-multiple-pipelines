@@ -80,7 +80,7 @@ public class RunMultiplePipelinesTask implements Task {
         utilityHelper.sortAppOrderToTriggerOrder(appOrder, triggerOrder);
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
-        if (front50Service.equals(null)) {
+        if (front50Service == null) {
             throw new UnsupportedOperationException("Cannot start a stored pipeline, front50 is not enabled. Fix this by setting front50.enabled: true");
         }
 

@@ -1,0 +1,28 @@
+[{
+  "bundle_web": {
+    "pulse": {
+      "arguments": {
+        "app": "pulse",
+        "deploymentFrezeOverride": true,
+        "skipCanary": true,
+        "tag": "1.1.0",
+        "targetEnv": "cell001"
+      },
+      "child_pipeline": "singleEnviromentGradualCanaryPromote"
+    },
+    "rollback_onfailure": true,
+    "web": {
+      "arguments": {
+        "app": "web",
+        "deploymentFrezeOverride": true,
+        "skipCanary": true,
+        "tag": "1.1.0",
+        "targetEnv": "cell001"
+      },
+      "child_pipeline": "singleEnviromentGradualCanaryPromote",
+      "depends_on": [
+        "pulse"
+      ]
+    }
+  }
+}]
