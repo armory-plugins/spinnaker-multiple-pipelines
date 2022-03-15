@@ -20,12 +20,16 @@ import com.netflix.spinnaker.orca.api.pipeline.graph.StageDefinitionBuilder;
 import com.netflix.spinnaker.orca.api.pipeline.graph.TaskNode;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask;
-import org.jetbrains.annotations.NotNull;
+import javax.annotation.Nonnull;
+
 import org.pf4j.Extension;
 import org.pf4j.Plugin;
 import org.pf4j.PluginWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RunMultiplePipelinesPlugin extends Plugin {
+    private Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesPlugin.class);
     /**
      * Constructor to be used by plugin manager for plugin instantiation.
      * Your plugins have to provide constructor with this exact signature to
@@ -39,20 +43,19 @@ public class RunMultiplePipelinesPlugin extends Plugin {
 
     @Override
     public void start() {
-        log.info("Starting RunMultiplePipelines plugin...");
+        logger.info("Starting RunMultiplePipelines plugin...");
     }
 
     @Override
     public void stop() {
-        log.info("Stopping RunMultiplePipelines plugin...");
+        logger.info("Stopping RunMultiplePipelines plugin...");
     }
 }
 
 @Extension
 class RunMultiplePipelinesStage implements StageDefinitionBuilder {
     @Override
-    public void taskGraph(@NotNull StageExecution stage, @NotNull TaskNode.Builder builder) {
-        builder.withTask("runMultiplePipelinesTask", RunMultiplePipelinesTask.class);
-        StageDefinitionBuilder.super.taskGraph(stage, builder);
+    public void taskGraph(@Nonnull StageExecution stage, @Nonnull TaskNode.Builder builder) {
+        builder.withTask("runMultiplePipelines", RunMultiplePipelinesTask.class);
     }
 }

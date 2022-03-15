@@ -14,18 +14,26 @@
  * limitations under the License.
  */
 
-package io.armory.plugin.smp.config;
+package io.armory.plugin.smp.parseyml;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
-import javax.annotation.Nullable;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-@Data
-public class RunMultiplePipelinesContext {
-    private List<Map<Object, Object>> yamlConfig;
+@Getter
+@Setter
+public class Apps {
+    private Map<String, Object> apps = new LinkedHashMap<>();
 
-    @Nullable
-    private Map<Object, Object> expressionEvaluationSummary;
+    @JsonProperty("rollback_onfailure")
+    private boolean rollbackOnFailure;
+
+    @JsonAnySetter
+    void setApps(String key, Object value) {
+        apps.put(key, value);
+    }
 }

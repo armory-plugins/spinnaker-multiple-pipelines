@@ -5,8 +5,6 @@ import type { IFormikStageConfigInjectedProps } from '@spinnaker/core';
 
 import { YamlEditor, yamlDocumentsToString } from '@spinnaker/core';
 
-// import { YamlEditor } from './yamlEditor/YamlEditor';
-
 interface IInputYamlForm {
   inputYaml: string;
 }
@@ -14,15 +12,15 @@ interface IInputYamlForm {
 export class InputYamlForm extends React.Component<IFormikStageConfigInjectedProps, IInputYamlForm> {
   constructor(props: IFormikStageConfigInjectedProps) {
     super(props);
-    const YAML: any[] = get(props.formik.values, 'YAML');
+    const yamlConfig: any[] = get(props.formik.values, 'yamlConfig');
     this.state = {
-      inputYaml: !isEmpty(YAML) ? yamlDocumentsToString(YAML) : '',
+      inputYaml: !isEmpty(yamlConfig) ? yamlDocumentsToString(yamlConfig) : '',
     };
   }
 
-  private handleRawManifestChange = (inputYaml: string, YAML: any): void => {
+  private handleRawManifestChange = (inputYaml: string, yamlConfig: any): void => {
     this.setState({ inputYaml });
-    this.props.formik.setFieldValue('YAML', YAML);
+    this.props.formik.setFieldValue('yamlConfig', yamlConfig);
   };
 
   public render() {

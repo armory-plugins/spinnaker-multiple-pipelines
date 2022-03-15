@@ -2,10 +2,18 @@ plugins {
     id 'java'
     id 'maven-publish'
     id "io.spinnaker.plugin.service-extension"
+    id "kotlin"
 }
 
 group 'io.armory.plugin.smp'
 version '0.0.1'
+
+compileTestKotlin {
+    kotlinOptions {
+        languageVersion = "1.3"
+        jvmTarget = "11"
+    }
+}
 
 repositories {
     mavenCentral()
@@ -24,19 +32,44 @@ repositories {
 spinnakerPlugin {
     serviceName = "orca"
     pluginClass = "io.armory.plugin.smp.RunMultiplePipelinesPlugin"
+    requires = "orca>=0.0.0"
 }
 
 dependencies {
+    compileOnly 'com.google.code.gson:gson:2.9.0'
+    compileOnly 'org.codehaus.groovy:groovy-all:3.0.0'
+    compileOnly 'de.huxhorn.sulky:de.huxhorn.sulky.ulid:8.2.0'
+    compileOnly 'io.reactivex:rxjava:1.3.8'
+
     compileOnly(group: 'org.pf4j', name: 'pf4j', version: "${pf4jVersion}")
     compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
     compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
+    compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
+    compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
     compileOnly "io.spinnaker.kork:kork-artifacts:${korkVersion}"
+    compileOnly "io.spinnaker.kork:kork-security:${korkVersion}"
+    compileOnly "io.spinnaker.kork:kork-core:${korkVersion}"
+    compileOnly "io.spinnaker.kork:kork-exceptions:${korkVersion}"
+    compileOnly "io.spinnaker.kork:kork-expressions:${korkVersion}"
+    compileOnly "io.spinnaker.kork:kork-moniker:${korkVersion}"
+    compileOnly "io.spinnaker.kork:kork-plugins:${korkVersion}"
+    compileOnly "io.spinnaker.kork:kork-telemetry:${korkVersion}"
 
     compileOnly(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
     annotationProcessor(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testImplementation(platform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
+    testImplementation "io.spinnaker.orca:orca-api"
+    testImplementation "io.spinnaker.orca:orca-api-tck"
+    testImplementation "io.spinnaker.orca:orca-queue"
+    testImplementation "io.spinnaker.kork:kork-plugins-tck"
+
+    testImplementation "dev.minutest:minutest:1.13.0"
+    testImplementation "io.spinnaker.orca:orca-front50:${orcaVersion}"
+
+    testRuntime 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntime 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
 }
 
 test {
