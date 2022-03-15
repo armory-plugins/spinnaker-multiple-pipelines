@@ -32,6 +32,7 @@ repositories {
 spinnakerPlugin {
     serviceName = "orca"
     pluginClass = "io.armory.plugin.smp.RunMultiplePipelinesPlugin"
+    requires = "orca>=0.0.0"
 }
 
 dependencies {
@@ -63,13 +64,7 @@ dependencies {
     testImplementation "io.spinnaker.orca:orca-queue"
     testImplementation "io.spinnaker.kork:kork-plugins-tck"
 
-    testImplementation 'org.spockframework:spock-core:2.1-groovy-3.0'
-    testImplementation 'com.google.code.gson:gson:2.9.0'
-    testImplementation "io.strikt:strikt-core:0.31.0"
     testImplementation "dev.minutest:minutest:1.13.0"
-    testImplementation "io.mockk:mockk:1.9.3"
-    testImplementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.11.1"
-    testImplementation "javax.servlet:javax.servlet-api:4.0.1"
     testImplementation "io.spinnaker.orca:orca-front50:${orcaVersion}"
 
     testRuntime 'org.junit.jupiter:junit-jupiter-api:5.8.2'

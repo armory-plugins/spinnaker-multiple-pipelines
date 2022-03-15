@@ -16,26 +16,17 @@
 
 package io.armory.plugin.smp
 
-import com.google.gson.Gson
 import com.netflix.spinnaker.orca.api.test.orcaFixture
 import dev.minutest.junit.JUnit5Minutests
 import dev.minutest.rootContext
-import io.armory.plugin.smp.config.RunMultiplePipelinesContext
-import org.springframework.http.MediaType
-import org.springframework.test.web.servlet.post
 import strikt.api.expect
 import strikt.assertions.isEqualTo
-import java.io.File
 
 /**
  * This test demonstrates that the RunMultiplePipelines can be loaded by Orca
  * and that RunMultiplePipeline's StageDefinitionBuilder can be retrieved at runtime.
  */
 class RunMultiplePipelinesStageIntegrationTest : JUnit5Minutests{
-
-    val jsonString: String = File("./src/test/resources/yamlConfig.json").readText(Charsets.UTF_8)
-    val gson = Gson()
-    val json = gson.toJson(jsonString)
 
     fun tests() = rootContext<OrcaPluginsFixture> {
         context("a running Orca instance") {
@@ -51,27 +42,7 @@ class RunMultiplePipelinesStageIntegrationTest : JUnit5Minutests{
                     that(stageDefinitionBuilder.type).isEqualTo("runMultiplePipelines")
                 }
             }
-
-            test("RunMultiplePipelines can be executed as a stage within a live pipeline execution") {
-                val response = mockMvc.post("/orchestrate/{pipelineId}","123") {
-                    contentType = MediaType.APPLICATION_JSON
-                    content = mapper.writeValueAsString(mapOf(
-                        "application" to "pf4j-stage-plugin",
-                        "stages" to listOf(mapOf(
-                            "refId" to "1",
-                            "type" to "runMultiplePipelines",
-                            "yamlConfig" to json
-                        )
-                    )))
-                }.andReturn().response
-
-                expect {
-                    that(response.status).isEqualTo(200)
-                }
-
-            }
         }
     }
 
-    data class Stage(val status: String, val context: RunMultiplePipelinesContext, val type: String)
 }

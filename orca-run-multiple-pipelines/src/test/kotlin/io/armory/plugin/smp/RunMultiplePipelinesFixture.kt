@@ -16,38 +16,27 @@
 
 package io.armory.plugin.smp
 
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.netflix.spinnaker.kork.plugins.internal.PluginJar
 import com.netflix.spinnaker.orca.StageResolver
 import com.netflix.spinnaker.orca.api.test.OrcaFixture
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter
-import com.netflix.spinnaker.orca.front50.Front50Service
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask
 import java.io.File
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
-import org.springframework.test.web.servlet.MockMvc
 
 @ContextConfiguration(classes = [DependentPipelineStarter::class])
 @TestPropertySource(properties = [
     "spinnaker.extensibility.plugins.Armory.RunMultiplePipelinesPlugin.enabled=true",
-    "spinnaker.extensibility.plugins-root-path=build/plugins",
-    "front50.enabled=true",
-    "front50.base-url=http://localhost:8084/"
+    "spinnaker.extensibility.plugins-root-path=build/plugins"
 ])
 @AutoConfigureMockMvc
 class OrcaPluginsFixture : OrcaFixture() {
 
     @Autowired
     lateinit var stageResolver: StageResolver
-
-    @Autowired
-    lateinit var mockMvc: MockMvc
-
-    val mapper = jacksonObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
 
     init {
         val pluginId = "Armory.RunMultiplePipelinesPlugin"
