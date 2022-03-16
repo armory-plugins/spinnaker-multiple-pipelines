@@ -1,4 +1,13 @@
 rootProject.name = 'spinnaker-multiple-pipelines'
-include 'orca-run-multiple-pipelines'
-include 'deck-run-multiple-pipelines'
+include 'orca-run-multiple-pipelines', 'deck-run-multiple-pipelines'
 
+def setBuildFile(project) {
+    project.buildFileName = "${project.name}.gradle"
+    project.children.each {
+        setBuildFile(it)
+    }
+}
+
+rootProject.children.each {
+    setBuildFile(it)
+}
