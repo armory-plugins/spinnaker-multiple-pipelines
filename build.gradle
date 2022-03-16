@@ -8,10 +8,10 @@ plugins {
     id("io.spinnaker.plugin.bundler").version("$spinnakerGradleVersion")
 }
 
-version 'v0.0.3'
+version 'v0.0.4'
 
 spinnakerBundle {
-    pluginId = "Armory.RunMultitplePipelines"
+    pluginId = "Armory.RunMultiplePipelines"
     description = ""
     provider = "https://armory.io"
     version = rootProject.version
