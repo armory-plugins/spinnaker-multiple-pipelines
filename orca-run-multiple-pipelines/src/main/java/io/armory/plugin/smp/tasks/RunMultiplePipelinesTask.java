@@ -100,14 +100,23 @@ public class RunMultiplePipelinesTask implements Task {
                     dependentPipelineStarter,
                     executionRepository);
             triggerInOrder.run();
-            executionStatuses.add(triggerInOrder.getExecutionStatus());
-            if (triggerInOrder.getExecutionStatus() != ExecutionStatus.SUCCEEDED) {
-                returnExecutionStatus = triggerInOrder.getExecutionStatus();
-                break;
-            }
+//            executionStatuses.add(triggerInOrder.getExecutionStatus());
+//            if (triggerInOrder.getExecutionStatus() != ExecutionStatus.SUCCEEDED) {
+//                returnExecutionStatus = triggerInOrder.getExecutionStatus();
+//                break;
+//            }
         }
 
         boolean rollbackOnFailure = apps.isRollbackOnFailure();
+//        if (rollbackOnFailure) {
+//            executionStatuses.forEach(executionStatus -> {
+//                if (executionStatus.isFailure()) {
+//
+//                }
+//            });
+//            UndoRolloutManifestStage undoRolloutManifestStage = new UndoRolloutManifestStage();
+//            undoRolloutManifestStage.taskGraph();
+//        }
         System.out.println(rollbackOnFailure);
 
         return TaskResult

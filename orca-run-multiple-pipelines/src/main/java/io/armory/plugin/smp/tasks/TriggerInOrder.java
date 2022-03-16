@@ -28,8 +28,6 @@ import io.armory.plugin.smp.parseyml.App;
 import lombok.Getter;
 import lombok.SneakyThrows;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -63,22 +61,28 @@ public class TriggerInOrder implements Runnable{
                 stage.getId(),
                 getUser(stage.getExecution())
         );
-            while (true) {
-                try {
-                    PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
-                    if (pipelineExecutionUpdated != null) {
-                        if (pipelineExecutionUpdated.getStatus().isComplete()) {
-                            executionStatus = pipelineExecutionUpdated.getStatus();
-                            break;
-                        }
-                    }
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (ExecutionNotFoundException e) {
-                    e.printStackTrace();
-                }
-            }
+//            while (true) {
+//                try {
+//                    PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
+//                    if (pipelineExecutionUpdated != null) {
+//                        if (pipelineExecutionUpdated.getStatus().isComplete()) {
+//                            executionStatus = pipelineExecutionUpdated.getStatus();
+////                            if (executionStatus == ExecutionStatus.FAILED_CONTINUE) {
+////                                StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("deployLast")).findFirst().get();
+////                                if (deployStage.getOutputs().get("output.outputs.createdArtifacts") != null) {
+////                                    System.out.println("oh shit");
+////                                }
+////                            }
+//                            break;
+//                        }
+//                    }
+//                    Thread.sleep(1);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                } catch (ExecutionNotFoundException e) {
+//                    e.printStackTrace();
+//                }
+//            }
     }
 
     private PipelineExecution.AuthenticationDetails getUser(PipelineExecution parentPipeline) {
