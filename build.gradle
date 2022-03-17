@@ -8,7 +8,7 @@ plugins {
     id("io.spinnaker.plugin.bundler").version("$spinnakerGradleVersion")
 }
 
-version 'v0.0.4'
+version 'v0.1.1'
 
 spinnakerBundle {
     pluginId = "Armory.RunMultiplePipelines"
@@ -20,7 +20,7 @@ spinnakerBundle {
 subprojects { project ->
     group = "io.armory.plugin.smp"
     version = rootProject.version
-//    apply plugin: "maven-publish"
+    apply plugin: "maven-publish"
 }
 
 task version() {

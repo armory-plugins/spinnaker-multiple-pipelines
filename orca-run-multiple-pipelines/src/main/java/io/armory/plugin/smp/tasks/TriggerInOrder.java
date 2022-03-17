@@ -16,7 +16,6 @@
 
 package io.armory.plugin.smp.tasks;
 
-import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
@@ -39,7 +38,7 @@ public class TriggerInOrder implements Runnable{
     private final App app;
     private final DependentPipelineStarter dependentPipelineStarter;
     private final ExecutionRepository executionRepository;
-    private ExecutionStatus executionStatus;
+    private PipelineExecution pipelineExecution;
 
     public TriggerInOrder(Map<String, Object> pipelineConfigCopy, StageExecution stage, App app, DependentPipelineStarter dependentPipelineStarter, ExecutionRepository executionRepository) {
         this.pipelineConfigCopy = pipelineConfigCopy;
@@ -61,28 +60,22 @@ public class TriggerInOrder implements Runnable{
                 stage.getId(),
                 getUser(stage.getExecution())
         );
-//            while (true) {
-//                try {
-//                    PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
-//                    if (pipelineExecutionUpdated != null) {
-//                        if (pipelineExecutionUpdated.getStatus().isComplete()) {
-//                            executionStatus = pipelineExecutionUpdated.getStatus();
-////                            if (executionStatus == ExecutionStatus.FAILED_CONTINUE) {
-////                                StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("deployLast")).findFirst().get();
-////                                if (deployStage.getOutputs().get("output.outputs.createdArtifacts") != null) {
-////                                    System.out.println("oh shit");
-////                                }
-////                            }
-//                            break;
-//                        }
-//                    }
-//                    Thread.sleep(1);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                } catch (ExecutionNotFoundException e) {
-//                    e.printStackTrace();
-//                }
-//            }
+            while (true) {
+                try {
+                    PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
+                    if (pipelineExecutionUpdated != null) {
+                        if (pipelineExecutionUpdated.getStatus().isComplete()) {
+                            this.pipelineExecution = pipelineExecutionUpdated;
+                            break;
+                        }
+                    }
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
     }
 
     private PipelineExecution.AuthenticationDetails getUser(PipelineExecution parentPipeline) {

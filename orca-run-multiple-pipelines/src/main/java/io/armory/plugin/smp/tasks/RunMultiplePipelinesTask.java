@@ -19,12 +19,25 @@ package io.armory.plugin.smp.tasks;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.netflix.spectator.api.Registry;
+import com.netflix.spinnaker.kork.core.RetrySupport;
+import com.netflix.spinnaker.kork.dynamicconfig.DynamicConfigService;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
+import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType;
+import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
+import com.netflix.spinnaker.orca.clouddriver.KatoService;
+import com.netflix.spinnaker.orca.clouddriver.OortService;
+import com.netflix.spinnaker.orca.clouddriver.pipeline.manifest.UndoRolloutManifestStage;
+import com.netflix.spinnaker.orca.clouddriver.tasks.MonitorKatoTask;
+import com.netflix.spinnaker.orca.clouddriver.tasks.manifest.UndoRolloutManifestTask;
+import com.netflix.spinnaker.orca.clouddriver.tasks.manifest.WaitForManifestStableTask;
 import com.netflix.spinnaker.orca.front50.Front50Service;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
+import com.netflix.spinnaker.orca.pipeline.model.PipelineExecutionImpl;
+import com.netflix.spinnaker.orca.pipeline.model.StageExecutionImpl;
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
 import io.armory.plugin.smp.config.RunMultiplePipelinesConfig;
 import io.armory.plugin.smp.config.RunMultiplePipelinesContext;
@@ -54,12 +67,23 @@ public class RunMultiplePipelinesTask implements Task {
     private final RunMultiplePipelinesConfig config;
     private final ExecutionRepository executionRepository;
 
+    private final OortService oortService;
+    private final Registry registry;
+    private final KatoService kato;
+    private final DynamicConfigService dynamicConfigService;
+    private final RetrySupport retrySupport;
+
     public RunMultiplePipelinesTask(final RunMultiplePipelinesConfig config, Optional<Front50Service> front50Service,
-                                    DependentPipelineStarter dependentPipelineStarter, ExecutionRepository executionRepository)  {
+                                    DependentPipelineStarter dependentPipelineStarter, ExecutionRepository executionRepository, OortService oortService, Registry registry, KatoService kato, DynamicConfigService dynamicConfigService, RetrySupport retrySupport)  {
         this.config = config;
         this.front50Service = front50Service.orElse(null);
         this.dependentPipelineStarter = dependentPipelineStarter;
         this.executionRepository = executionRepository;
+        this.oortService = oortService;
+        this.registry = registry;
+        this.kato = kato;
+        this.dynamicConfigService = dynamicConfigService;
+        this.retrySupport = retrySupport;
     }
 
     private final Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesTask.class);
@@ -86,7 +110,7 @@ public class RunMultiplePipelinesTask implements Task {
 
         List<Map<String, Object>> pipelines = front50Service.getPipelines(application, false);
         List<Map<String, Object>> pipelineConfigs = utilityHelper.getPipelineConfigs(appOrder, pipelines);
-        List<ExecutionStatus> executionStatuses = new LinkedList<>();
+        List<PipelineExecution> pipelineExecutions = new LinkedList<>();
         ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
         for (int i = 0; i < pipelineConfigs.size(); i++) {
@@ -100,24 +124,42 @@ public class RunMultiplePipelinesTask implements Task {
                     dependentPipelineStarter,
                     executionRepository);
             triggerInOrder.run();
-//            executionStatuses.add(triggerInOrder.getExecutionStatus());
-//            if (triggerInOrder.getExecutionStatus() != ExecutionStatus.SUCCEEDED) {
-//                returnExecutionStatus = triggerInOrder.getExecutionStatus();
-//                break;
-//            }
+            pipelineExecutions.add(triggerInOrder.getPipelineExecution());
+            if (triggerInOrder.getPipelineExecution().getStatus() != ExecutionStatus.SUCCEEDED) {
+                returnExecutionStatus = triggerInOrder.getPipelineExecution().getStatus();
+                break;
+            }
         }
 
-        boolean rollbackOnFailure = apps.isRollbackOnFailure();
-//        if (rollbackOnFailure) {
-//            executionStatuses.forEach(executionStatus -> {
-//                if (executionStatus.isFailure()) {
-//
-//                }
-//            });
-//            UndoRolloutManifestStage undoRolloutManifestStage = new UndoRolloutManifestStage();
-//            undoRolloutManifestStage.taskGraph();
-//        }
-        System.out.println(rollbackOnFailure);
+        if (apps.isRollbackOnFailure()) {
+            pipelineExecutions.forEach(pipelineExecution -> {
+                if (pipelineExecution.getStatus() == ExecutionStatus.TERMINAL) {
+                    StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("Deploy Baseline")).findFirst().get();
+                    if (deployStage.getOutputs().get("outputs.createdArtifacts") != null) {
+                        System.out.println("you need to perform a rollback");
+                        List<Map<String, Object>> createdArtifacts = (List<Map<String, Object>>) deployStage.getOutputs().get("outputs.createdArtifacts");
+                        List<Map<String, Object>> manifests = (List<Map<String, Object>>) deployStage.getOutputs().get("manifests");
+
+                        UndoRolloutManifestStage undoRolloutManifestStage = new UndoRolloutManifestStage();
+                        Map<String, Object> undoRolloutContext = new HashMap<>();
+
+//                        undoRolloutContext.put("manifest.account.name", deployStage.getContext().get("deploy.account.name"));
+                        undoRolloutContext.put("account", deployStage.getContext().get("deploy.account.name"));
+                        undoRolloutContext.put("manifestName", manifests.get(0).get("kind") + " " + createdArtifacts.get(0).get("name"));
+                        undoRolloutContext.put("location", createdArtifacts.get(0).get("location"));
+                        undoRolloutContext.put("numRevisionsBack", 1);
+
+                        StageExecution undoStage = new StageExecutionImpl(new PipelineExecutionImpl(ExecutionType.PIPELINE, application), "Undo Rollout (Manifest)", undoRolloutContext);
+                        UndoRolloutManifestTask undoRolloutManifestTask = new UndoRolloutManifestTask();
+                        undoRolloutManifestTask.execute(undoStage);
+                        MonitorKatoTask monitorKatoTask = new MonitorKatoTask(kato, registry, dynamicConfigService, retrySupport);
+                        monitorKatoTask.execute(undoStage);
+                        WaitForManifestStableTask waitForManifestStableTask = new WaitForManifestStableTask(oortService);
+                        waitForManifestStableTask.execute(undoStage);
+                    }
+                }
+            });
+        }
 
         return TaskResult
                 .builder(returnExecutionStatus)
