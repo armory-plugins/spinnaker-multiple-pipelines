@@ -48,7 +48,6 @@ public class TriggerInOrder implements Runnable{
         this.executionRepository = executionRepository;
     }
 
-
     @SneakyThrows
     @Override
     public void run() {
@@ -62,6 +61,7 @@ public class TriggerInOrder implements Runnable{
         );
             while (true) {
                 try {
+                    System.out.println(pipelineExecution.getPipelineConfigId());
                     PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
                     if (pipelineExecutionUpdated != null) {
                         if (pipelineExecutionUpdated.getStatus().isComplete()) {

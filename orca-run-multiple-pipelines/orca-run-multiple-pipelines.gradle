@@ -44,6 +44,7 @@ dependencies {
     compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
     compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
     compileOnly "io.spinnaker.orca:orca-clouddriver:${orcaVersion}"
+    compileOnly "io.spinnaker.orca:orca-web:${orcaVersion}"
     compileOnly "io.spinnaker.kork:kork-web:${korkVersion}"
     compileOnly "io.spinnaker.kork:kork-artifacts:${korkVersion}"
     compileOnly "io.spinnaker.kork:kork-security:${korkVersion}"
