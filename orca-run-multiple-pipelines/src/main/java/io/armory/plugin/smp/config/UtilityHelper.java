@@ -19,77 +19,17 @@ package io.armory.plugin.smp.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import groovy.lang.Closure;
 import io.armory.plugin.smp.parseyml.App;
 import io.armory.plugin.smp.parseyml.Apps;
 import io.armory.plugin.smp.parseyml.BundleWeb;
-import org.codehaus.groovy.runtime.DefaultGroovyMethods;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 public class UtilityHelper {
-
-    public List<String> getTriggerOrder(Apps apps,
-                                        List<App> appOrder,
-                                        Gson gson,
-                                        ObjectMapper mapper) throws JsonProcessingException {
-        List<String> triggerOrder = new LinkedList<>();
-
-        for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
-            Map<String, Object> mapApp = Map.ofEntries(entry);
-            String jsonApp = gson.toJson(mapApp.get(entry.getKey()));
-            App app = mapper.readValue(jsonApp, App.class);
-            appOrder.add(app);
-            if (app.getDependsOn() != null) {
-                app.getDependsOn().forEach(a -> {
-                    if (!triggerOrder.contains(a)) {
-                        triggerOrder.add(0, a);
-                    }
-                });
-                if (!triggerOrder.contains(entry.getKey())) {
-                    triggerOrder.add(entry.getKey());
-                }
-            }
-        }
-
-        for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
-            if (!triggerOrder.contains(entry.getKey())) {
-                triggerOrder.add(entry.getKey());
-            }
-        }
-        return triggerOrder;
-    }
-
-    public void sortAppOrderToTriggerOrder(List<App> appOrder, List<String> triggerOrder) {
-        for (int i = 0; i < triggerOrder.size()-1; i++) {
-            if (!triggerOrder.get(i).equals(appOrder.get(i).getArguments().get("app"))) {
-                for (App s : appOrder) {
-                    if (s.getArguments().get("app").equals(triggerOrder.get(i))) {
-                        Collections.swap(appOrder, i, appOrder.indexOf(s));
-                    }
-                }
-            }
-        }
-    }
-
-    public List<Map<String, Object>> getPipelineConfigs(List<App> apps, List<Map<String, Object>> pipelines) {
-        List<Map<String, Object>> pipelineConfigs = new LinkedList<>();
-        for (App app : apps) {
-            pipelineConfigs.add( DefaultGroovyMethods.find(pipelines, new Closure<Boolean>(this ,this) {
-                public Boolean doCall(Map<String, Object> it) {
-                    return (it.get("name").equals(app.getChildPipeline()));
-                }
-
-                public Boolean doCall() {
-                    return doCall(null);
-                }
-            }));
-        }
-        return pipelineConfigs;
-    }
 
     public Apps getApps(RunMultiplePipelinesContext context, Gson gson, ObjectMapper mapper) throws JsonProcessingException {
         String json = gson.toJson(context.getYamlConfig().get(0));
@@ -100,6 +40,75 @@ public class UtilityHelper {
         return apps;
     }
 
+    public Map<String, Stack<App>> tryWithStack(Apps apps, ObjectMapper mapper, Gson gson) throws JsonProcessingException {
+        Map<String, Stack<App>> result = new HashMap<>();
+
+        //getAll appsNames
+        List<String> topApps = new LinkedList<>();
+        for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
+            topApps.add(entry.getKey());
+        }
+        topApps.forEach(System.out::println);
+
+        //SortThem only keep the ones that don't depend on
+        for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
+            Map<String, Object> mapApp = Map.ofEntries(entry);
+            String jsonApp = gson.toJson(mapApp.get(entry.getKey()));
+            App app = mapper.readValue(jsonApp, App.class);
+            if (app.getDependsOn() != null) {
+                app.getDependsOn().forEach(appName -> topApps.removeIf(appName::equals));
+            }
+        }
+
+        //Push the "TopApps" that don't depend on anything to the stack
+        topApps.forEach(appName -> result.put(appName, new Stack<>()));
+        for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
+            Map<String, Object> mapApp = Map.ofEntries(entry);
+            String jsonApp = gson.toJson(mapApp.get(entry.getKey()));
+            App app = mapper.readValue(jsonApp, App.class);
+            topApps.forEach(appName -> {
+                if (appName.equals(entry.getKey())) {
+                    result.get(entry.getKey()).push(app);
+                }
+            });
+        }
+
+        //iterate over Top apps to find the tree of dependencies
+        //ex web -> pulse -> otherApp then pop form the stack to trigger in the right order
+        for (Map.Entry<String, Stack<App>> stackEntry : result.entrySet()) {
+            int i = 0;
+            while (stackEntry.getValue().size() > i) {
+                App stack = stackEntry.getValue().get(i);
+                if(stack.getDependsOn() != null) {
+                    for (String appName : stack.getDependsOn()) {
+                        Map.Entry<String, Object> entry = apps.getApps().entrySet().stream().filter(e -> {
+                            Map<String, Object> mapApp = Map.ofEntries(e);
+                            String jsonApp = gson.toJson(mapApp.get(e.getKey()));
+                            boolean filter = false;
+                            try {
+                                App app = mapper.readValue(jsonApp, App.class);
+                                filter = appName.equals(app.getArguments().get("app"));
+                            } catch (JsonProcessingException ex) {
+                                ex.printStackTrace();
+                            }
+                            return filter;
+                        }).findAny().get();
+                        Map<String, Object> mapApp = Map.ofEntries(entry);
+                        String jsonApp = gson.toJson(mapApp.get(entry.getKey()));
+                        try {
+                            App app = mapper.readValue(jsonApp, App.class);
+                            stackEntry.getValue().push(app);
+                        } catch (JsonProcessingException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                i++;
+            }
+        }
+
+        return result;
+    }
 
 
 }

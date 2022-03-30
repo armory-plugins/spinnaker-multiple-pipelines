@@ -59,15 +59,12 @@ public class TriggerInOrder implements Runnable{
                 stage.getId(),
                 getUser(stage.getExecution())
         );
-            while (true) {
+        while (true) {
                 try {
-                    System.out.println(pipelineExecution.getPipelineConfigId());
                     PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
-                    if (pipelineExecutionUpdated != null) {
-                        if (pipelineExecutionUpdated.getStatus().isComplete()) {
-                            this.pipelineExecution = pipelineExecutionUpdated;
-                            break;
-                        }
+                    if (pipelineExecutionUpdated.getStatus().isComplete()) {
+                        this.pipelineExecution = pipelineExecutionUpdated;
+                        break;
                     }
                     Thread.sleep(500);
                 } catch (InterruptedException e) {

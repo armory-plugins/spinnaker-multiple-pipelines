@@ -19,29 +19,14 @@ package io.armory.plugin.smp.tasks;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.netflix.spectator.api.Registry;
-import com.netflix.spinnaker.kork.core.RetrySupport;
-import com.netflix.spinnaker.kork.dynamicconfig.DynamicConfigService;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
-import com.netflix.spinnaker.orca.api.pipeline.graph.TaskNode;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
-import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
-import com.netflix.spinnaker.orca.clouddriver.KatoService;
-import com.netflix.spinnaker.orca.clouddriver.OortService;
-import com.netflix.spinnaker.orca.clouddriver.pipeline.manifest.UndoRolloutManifestStage;
-import com.netflix.spinnaker.orca.clouddriver.tasks.MonitorKatoTask;
-import com.netflix.spinnaker.orca.clouddriver.tasks.manifest.UndoRolloutManifestTask;
-import com.netflix.spinnaker.orca.clouddriver.tasks.manifest.WaitForManifestStableTask;
-import com.netflix.spinnaker.orca.controllers.OperationsController;
 import com.netflix.spinnaker.orca.front50.Front50Service;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
-import com.netflix.spinnaker.orca.pipeline.model.PipelineExecutionImpl;
-import com.netflix.spinnaker.orca.pipeline.model.StageExecutionImpl;
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
-import io.armory.plugin.smp.config.RunMultiplePipelinesConfig;
 import io.armory.plugin.smp.config.RunMultiplePipelinesContext;
 import javax.annotation.Nonnull;
 
@@ -62,33 +47,21 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.Stack;
 
 @Extension
 public class RunMultiplePipelinesTask implements Task {
 
     private final Front50Service front50Service;
     private final DependentPipelineStarter dependentPipelineStarter;
-    private final RunMultiplePipelinesConfig config;
     private final ExecutionRepository executionRepository;
 
-    private final OortService oortService;
-    private final Registry registry;
-    private final KatoService kato;
-    private final DynamicConfigService dynamicConfigService;
-    private final RetrySupport retrySupport;
-
-    public RunMultiplePipelinesTask(final RunMultiplePipelinesConfig config, Optional<Front50Service> front50Service,
-                                    DependentPipelineStarter dependentPipelineStarter, ExecutionRepository executionRepository, OortService oortService, Registry registry, KatoService kato, DynamicConfigService dynamicConfigService, RetrySupport retrySupport)  {
-        this.config = config;
+    public RunMultiplePipelinesTask(Optional<Front50Service> front50Service,
+                                    DependentPipelineStarter dependentPipelineStarter,
+                                    ExecutionRepository executionRepository)  {
         this.front50Service = front50Service.orElse(null);
         this.dependentPipelineStarter = dependentPipelineStarter;
         this.executionRepository = executionRepository;
-        this.oortService = oortService;
-        this.registry = registry;
-        this.kato = kato;
-        this.dynamicConfigService = dynamicConfigService;
-        this.retrySupport = retrySupport;
     }
 
     private final Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesTask.class);
@@ -104,9 +77,7 @@ public class RunMultiplePipelinesTask implements Task {
 
         Apps apps = utilityHelper.getApps(context, gson, mapper);
 
-        List<App> appOrder = new LinkedList<>();
-        List<String> triggerOrder = utilityHelper.getTriggerOrder(apps, appOrder, gson, mapper);
-        utilityHelper.sortAppOrderToTriggerOrder(appOrder, triggerOrder);
+        Map<String, Stack<App>> newTry = utilityHelper.tryWithStack(apps, mapper, gson);
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
         if (front50Service == null) {
@@ -114,129 +85,133 @@ public class RunMultiplePipelinesTask implements Task {
         }
 
         List<Map<String, Object>> pipelines = front50Service.getPipelines(application, false);
-        List<Map<String, Object>> pipelineConfigs = utilityHelper.getPipelineConfigs(appOrder, pipelines);
         List<PipelineExecution> pipelineExecutions = new LinkedList<>();
         ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
-        Map<String, Object> undoRolloutContext = new HashMap<>();
-//                        undoRolloutContext.put("manifest.account.name", deployStage.getContext().get("deploy.account.name"));
-        undoRolloutContext.put("account", "spinnaker");
-        undoRolloutContext.put("manifestName", "deployment pulse");
-        undoRolloutContext.put("location", "test-deploym");
-        undoRolloutContext.put("numRevisionsBack", Integer.valueOf(1));
-        undoRolloutContext.put("cloudProvider", "kubernetes");
-        undoRolloutContext.put("mode", "static");
-        undoRolloutContext.put("name", "Undo Rollout (Manifest)");
-        undoRolloutContext.put("refId", "1");
-        undoRolloutContext.put("requisiteStageRefIds", new ArrayList<>());
-        undoRolloutContext.put("type", "undoRolloutManifest");
-
-        Map<String, Object> rollbackOnFailure = new HashMap<>();
-        rollbackOnFailure.put("triggers", new ArrayList<>());
-        rollbackOnFailure.put("stages", Arrays.asList(undoRolloutContext));
-        rollbackOnFailure.put("application", application);
-        rollbackOnFailure.put("index", pipelines.size());
-        rollbackOnFailure.put("name", "rollbackOnFailure");
-        rollbackOnFailure.put("keepWaitingPipelines", false);
-        rollbackOnFailure.put("limitConcurrent", false);
-        rollbackOnFailure.put("spelEvaluator", "v4");
-        if (!pipelines.stream().anyMatch(p -> p.get("name").equals("rollbackOnFailure"))) {
-            front50Service.savePipeline(rollbackOnFailure, true);
+        //trigger pipelines in different Threads
+        for (Stack<App> stack : newTry.values()) {
+            Runnable triggerThis = () -> triggerThread(stack, gson, stage, pipelines, pipelineExecutions);
+            Thread triggerThread = new Thread(triggerThis);
+            triggerThread.start();
         }
-        Thread.sleep(1000);
-        pipelines = front50Service.getPipelines(application, false);
-        Map<String, Object> triggerThis = pipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findAny().get();
-        dependentPipelineStarter.trigger(
-                triggerThis,
-                stage.getExecution().getAuthentication().getUser(),
-                stage.getExecution(),
-                new HashMap(),
-                stage.getId(),
-                stage.getExecution().getAuthentication()
-        );
 
-
-        for (int i = 0; i < pipelineConfigs.size(); i++) {
-            String jsonString = gson.toJson(pipelineConfigs.get(i));
-            Type type = new TypeToken<HashMap<String, Object>>(){}.getType();
-            Map<String, Object> pipelineConfigCopy = gson.fromJson(jsonString, type);
-            TriggerInOrder triggerInOrder = new TriggerInOrder(
-                    pipelineConfigCopy,
-                    stage,
-                    appOrder.get(i),
-                    dependentPipelineStarter,
-                    executionRepository);
-            triggerInOrder.run();
-            pipelineExecutions.add(triggerInOrder.getPipelineExecution());
-            if (triggerInOrder.getPipelineExecution().getStatus() != ExecutionStatus.SUCCEEDED) {
-                returnExecutionStatus = triggerInOrder.getPipelineExecution().getStatus();
-                break;
+        //flag to continue execution after Threads
+        for (Stack<App> stack : newTry.values()) {
+            boolean flag = true;
+            while (flag) {
+                Thread.sleep(200);
+                if (stack.size() == 0) {
+                    flag = false;
+                }
             }
         }
 
+        if (pipelineExecutions.stream().anyMatch(p -> p.getStatus() != ExecutionStatus.SUCCEEDED)) {
+            returnExecutionStatus = pipelineExecutions.stream().map(PipelineExecution::getStatus).filter(status -> status != ExecutionStatus.SUCCEEDED).findFirst().get();
+        }
+
+        //if rollback property is true and a pipeline gets terminal rollbacks will be executed for
+        //completed success pipelines and Terminal pipelines with artifacts created
         if (apps.isRollbackOnFailure()) {
-            pipelineExecutions.forEach(pipelineExecution -> {
-                System.out.println(pipelineExecution.getPipelineConfigId());
-                if (pipelineExecution.getStatus() == ExecutionStatus.TERMINAL) {
-                    StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("Deploy Baseline")).findFirst().get();
-                    if (deployStage.getOutputs().get("outputs.createdArtifacts") != null) {
-                        System.out.println("you need to perform a rollback");
-                        List<Map<String, Object>> createdArtifacts = (List<Map<String, Object>>) deployStage.getOutputs().get("outputs.createdArtifacts");
-                        List<Map<String, Object>> manifests = (List<Map<String, Object>>) deployStage.getOutputs().get("manifests");
-
-//                        Map<String, Object> undoRolloutContext = new HashMap<>();
-////                        undoRolloutContext.put("manifest.account.name", deployStage.getContext().get("deploy.account.name"));
-//                        undoRolloutContext.put("account", deployStage.getContext().get("deploy.account.name"));
-//                        undoRolloutContext.put("manifestName", manifests.get(0).get("kind") + " " + createdArtifacts.get(0).get("name"));
-//                        undoRolloutContext.put("location", createdArtifacts.get(0).get("location"));
-//                        undoRolloutContext.put("numRevisionsBack", Integer.valueOf(1));
-//                        undoRolloutContext.put("cloudProvider", "kubernetes");
-//                        undoRolloutContext.put("mode", "static");
-
-//                        PipelineExecution pipelineExecution1 = new PipelineExecutionImpl(ExecutionType.PIPELINE, application);
-//                        StageExecution undoStage = new StageExecutionImpl(pipelineExecution1, "undoRolloutManifest", "Undo Rollout (Manifest)", undoRolloutContext);
-//
-//                        Map<String, Object> rollbackOnFailure = new HashMap<>();
-//                        rollbackOnFailure.put("triggers", new ArrayList<>());
-//                        rollbackOnFailure.put("stages", mapper.convertValue(undoStage, Map.class));
-//                        rollbackOnFailure.put("application", application);
-//                        rollbackOnFailure.put("index", pipelines.size());
-//                        rollbackOnFailure.put("name", "rollbackOnFailure");
-//                        rollbackOnFailure.put("keepWaitingPipelines", false);
-//                        rollbackOnFailure.put("limitConcurrent", false);
-//                        rollbackOnFailure.put("spelEvaluator", "v4");
-//                        front50Service.savePipeline(rollbackOnFailure, true);
-
-//                        executionRepository.storeStage(undoStage);
-//                        System.out.println(pipelineExecution1.getStages().get(0).getName());
-//                        OperationsController operationsController = new OperationsController();
-//                        operationsController.setFront50Service(front50Service);
-//                        pipelineExecution1.getContext().forEach((a,e) -> System.out.println(a + e.toString()));
-//                        operationsController.orchestratePipelineConfig(pipelineExecution1.getId(), new HashMap());
-
-//                        undoStage.getExecution().setAuthentication(stage.getExecution().getAuthentication());
-//                        System.out.println(undoStage.getExecution().getAuthentication().getUser());
-//                        System.out.println("execution context needed props");
-//                        undoStage.setStartTime(1647648830902L);
-//                        undoStage.getExecution().setOrigin("api");
-//                        System.out.println(undoStage.getStartTime());
-//                        System.out.println(undoStage.getExecution().getOrigin());
-
-//                        UndoRolloutManifestTask undoRolloutManifestTask = new UndoRolloutManifestTask();
-//                        undoRolloutManifestTask.execute(undoStage);
-//                        MonitorKatoTask monitorKatoTask = new MonitorKatoTask(kato, registry, dynamicConfigService, retrySupport);
-//                        monitorKatoTask.execute(undoStage);
-//                        WaitForManifestStableTask waitForManifestStableTask = new WaitForManifestStableTask(oortService);
-//                        waitForManifestStableTask.execute(undoStage);
-                    }
-                }
-            });
+            if (pipelineExecutions.stream().anyMatch(p -> p.getStatus() == ExecutionStatus.TERMINAL)) {
+                doRollbacks(pipelineExecutions, stage, application);
+            }
         }
 
         return TaskResult
                 .builder(returnExecutionStatus)
                 .outputs(Collections.singletonMap("my_message", "Hola"))
                 .build();
+    }
+
+    //this will get executed if the triggered pipelines created Artifacts in a stage named Deploy Baseline
+    private void doRollbacks(List<PipelineExecution> pipelineExecutions, StageExecution stage, String application) {
+        List<Map<String, Object>> finalPipelines = front50Service.getPipelines(application, false);
+        System.out.println("inside rollback list size");
+        System.out.println(pipelineExecutions.size());
+        pipelineExecutions.forEach(pipelineExecution -> {
+            StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("Deploy")).findFirst().get();
+            if (deployStage.getOutputs().get("outputs.createdArtifacts") != null) {
+                System.out.println("you need to perform a rollback");
+                List<Map<String, Object>> createdArtifacts = (List<Map<String, Object>>) deployStage.getOutputs().get("outputs.createdArtifacts");
+                List<Map<String, Object>> manifests = (List<Map<String, Object>>) deployStage.getOutputs().get("manifests");
+
+                Map<String, Object> undoRolloutContext = new HashMap<>();
+                undoRolloutContext.put("account", deployStage.getContext().get("deploy.account.name"));
+                undoRolloutContext.put("manifestName", manifests.get(0).get("kind") + " " + createdArtifacts.get(0).get("name"));
+                undoRolloutContext.put("location", createdArtifacts.get(0).get("location"));
+                undoRolloutContext.put("numRevisionsBack", 1);
+                undoRolloutContext.put("cloudProvider", "kubernetes");
+                undoRolloutContext.put("mode", "static");
+                undoRolloutContext.put("name", "Undo Rollout (Manifest) for " + createdArtifacts.get(0).get("name"));
+                undoRolloutContext.put("refId", "1");
+                undoRolloutContext.put("requisiteStageRefIds", new ArrayList<>());
+                undoRolloutContext.put("type", "undoRolloutManifest");
+
+                Map<String, Object> rollbackOnFailurePipeline = new HashMap<>();
+                rollbackOnFailurePipeline.put("triggers", new ArrayList<>());
+                rollbackOnFailurePipeline.put("stages", Arrays.asList(undoRolloutContext));
+                rollbackOnFailurePipeline.put("application", application);
+                rollbackOnFailurePipeline.put("index", finalPipelines.size());
+                rollbackOnFailurePipeline.put("name", "rollbackOnFailure");
+                rollbackOnFailurePipeline.put("keepWaitingPipelines", false);
+                rollbackOnFailurePipeline.put("limitConcurrent", false);
+                rollbackOnFailurePipeline.put("spelEvaluator", "v4");
+
+                if (!finalPipelines.stream().anyMatch(p -> p.get("name").equals("rollbackOnFailure"))) {
+                    System.out.println("creating pipeline");
+                    front50Service.savePipeline(rollbackOnFailurePipeline, true);
+                } else if (!finalPipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure"))
+                        .anyMatch(filterP -> filterP.get("stages").hashCode() == Arrays.asList(undoRolloutContext).hashCode())) {
+                    System.out.println("updating pipeline");
+                    String id = finalPipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findFirst().get().get("id").toString();
+                    front50Service.updatePipeline(id, rollbackOnFailurePipeline);
+                }
+
+                try {
+                    Thread.sleep(7000);
+                    List<Map<String, Object>> filterPipelinesList = front50Service.getPipelines(application, false);
+                    Map<String, Object> triggerThisRollback = filterPipelinesList.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findAny().get();
+                    dependentPipelineStarter.trigger(
+                            triggerThisRollback,
+                            stage.getExecution().getAuthentication().getUser(),
+                            stage.getExecution(),
+                            new HashMap(),
+                            stage.getId(),
+                            stage.getExecution().getAuthentication()
+                    );
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        });
+    }
+
+    private void triggerThread(Stack<App> stack, Gson gson, StageExecution stage, List<Map<String, Object>> pipelines, List<PipelineExecution> pipelineExecutions) {
+        int i = 0;
+        while (stack.size() > i) {
+            App app = stack.pop();
+            Map<String, Object> pipelineConfig = pipelines.stream().filter(pipeline -> pipeline.get("name").equals(app.getChildPipeline())).findFirst().orElse(null);
+            String jsonString = gson.toJson(pipelineConfig);
+            Type type = new TypeToken<HashMap<String, Object>>() {}.getType();
+            Map<String, Object> pipelineConfigCopy = gson.fromJson(jsonString, type);
+            TriggerInOrder triggerInOrder = new TriggerInOrder(
+                    pipelineConfigCopy,
+                    stage,
+                    app,
+                    dependentPipelineStarter,
+                    executionRepository);
+            triggerInOrder.run();
+            if (!pipelineExecutions.stream().anyMatch(p -> p.getTrigger().getParameters().get("app").equals(
+                    triggerInOrder.getPipelineExecution().getTrigger().getParameters().get("app")))) {
+                pipelineExecutions.add(triggerInOrder.getPipelineExecution());
+            }
+            if (triggerInOrder.getPipelineExecution().getStatus() != ExecutionStatus.SUCCEEDED) {
+                stack.removeAllElements();
+                break;
+            }
+        }
     }
 
 }
