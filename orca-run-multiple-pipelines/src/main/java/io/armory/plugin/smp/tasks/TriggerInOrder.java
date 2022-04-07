@@ -16,7 +16,6 @@
 
 package io.armory.plugin.smp.tasks;
 
-import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
@@ -28,8 +27,6 @@ import io.armory.plugin.smp.parseyml.App;
 import lombok.Getter;
 import lombok.SneakyThrows;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -41,7 +38,7 @@ public class TriggerInOrder implements Runnable{
     private final App app;
     private final DependentPipelineStarter dependentPipelineStarter;
     private final ExecutionRepository executionRepository;
-    private ExecutionStatus executionStatus;
+    private PipelineExecution pipelineExecution;
 
     public TriggerInOrder(Map<String, Object> pipelineConfigCopy, StageExecution stage, App app, DependentPipelineStarter dependentPipelineStarter, ExecutionRepository executionRepository) {
         this.pipelineConfigCopy = pipelineConfigCopy;
@@ -50,7 +47,6 @@ public class TriggerInOrder implements Runnable{
         this.dependentPipelineStarter = dependentPipelineStarter;
         this.executionRepository = executionRepository;
     }
-
 
     @SneakyThrows
     @Override
@@ -63,16 +59,14 @@ public class TriggerInOrder implements Runnable{
                 stage.getId(),
                 getUser(stage.getExecution())
         );
-            while (true) {
+        while (true) {
                 try {
                     PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
-                    if (pipelineExecutionUpdated != null) {
-                        if (pipelineExecutionUpdated.getStatus().isComplete()) {
-                            executionStatus = pipelineExecutionUpdated.getStatus();
-                            break;
-                        }
+                    if (pipelineExecutionUpdated.getStatus().isComplete()) {
+                        this.pipelineExecution = pipelineExecutionUpdated;
+                        break;
                     }
-                    Thread.sleep(1000);
+                    Thread.sleep(500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionNotFoundException e) {
