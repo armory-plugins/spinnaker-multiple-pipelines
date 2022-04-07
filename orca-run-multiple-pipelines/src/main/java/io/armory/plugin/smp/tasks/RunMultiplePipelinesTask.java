@@ -48,7 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
-import java.util.stream.Collectors;
 
 @Extension
 public class RunMultiplePipelinesTask implements Task {
@@ -124,19 +123,16 @@ public class RunMultiplePipelinesTask implements Task {
 
         return TaskResult
                 .builder(returnExecutionStatus)
-                .outputs(Collections.singletonMap("my_message", "Hola"))
+                .outputs(Collections.singletonMap("executionsList", pipelineExecutions))
                 .build();
     }
 
     //this will get executed if the triggered pipelines created Artifacts in a stage named Deploy Baseline
     private void doRollbacks(List<PipelineExecution> pipelineExecutions, StageExecution stage, String application) {
         List<Map<String, Object>> finalPipelines = front50Service.getPipelines(application, false);
-        System.out.println("inside rollback list size");
-        System.out.println(pipelineExecutions.size());
         pipelineExecutions.forEach(pipelineExecution -> {
             StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("Deploy")).findFirst().get();
             if (deployStage.getOutputs().get("outputs.createdArtifacts") != null) {
-                System.out.println("you need to perform a rollback");
                 List<Map<String, Object>> createdArtifacts = (List<Map<String, Object>>) deployStage.getOutputs().get("outputs.createdArtifacts");
                 List<Map<String, Object>> manifests = (List<Map<String, Object>>) deployStage.getOutputs().get("manifests");
 
@@ -147,7 +143,7 @@ public class RunMultiplePipelinesTask implements Task {
                 undoRolloutContext.put("numRevisionsBack", 1);
                 undoRolloutContext.put("cloudProvider", "kubernetes");
                 undoRolloutContext.put("mode", "static");
-                undoRolloutContext.put("name", "Undo Rollout (Manifest) for " + createdArtifacts.get(0).get("name"));
+                undoRolloutContext.put("name", "Undo Rollout (Manifest) " + pipelineExecution.getTrigger().getParameters().get("app"));
                 undoRolloutContext.put("refId", "1");
                 undoRolloutContext.put("requisiteStageRefIds", new ArrayList<>());
                 undoRolloutContext.put("type", "undoRolloutManifest");
@@ -161,14 +157,15 @@ public class RunMultiplePipelinesTask implements Task {
                 rollbackOnFailurePipeline.put("keepWaitingPipelines", false);
                 rollbackOnFailurePipeline.put("limitConcurrent", false);
                 rollbackOnFailurePipeline.put("spelEvaluator", "v4");
+                rollbackOnFailurePipeline.put("parameterConfig", new ArrayList<>());
+
 
                 if (!finalPipelines.stream().anyMatch(p -> p.get("name").equals("rollbackOnFailure"))) {
-                    System.out.println("creating pipeline");
                     front50Service.savePipeline(rollbackOnFailurePipeline, true);
                 } else if (!finalPipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure"))
                         .anyMatch(filterP -> filterP.get("stages").hashCode() == Arrays.asList(undoRolloutContext).hashCode())) {
-                    System.out.println("updating pipeline");
                     String id = finalPipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findFirst().get().get("id").toString();
+                    rollbackOnFailurePipeline.put("id", id);
                     front50Service.updatePipeline(id, rollbackOnFailurePipeline);
                 }
 

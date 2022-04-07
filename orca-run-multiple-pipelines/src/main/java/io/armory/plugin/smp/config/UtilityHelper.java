@@ -48,7 +48,6 @@ public class UtilityHelper {
         for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
             topApps.add(entry.getKey());
         }
-        topApps.forEach(System.out::println);
 
         //SortThem only keep the ones that don't depend on
         for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
