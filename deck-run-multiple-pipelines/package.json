@@ -21,7 +21,8 @@
     "lodash": "4.17.21",
     "react": "16.14.0",
     "react-ace": "6.4.0",
-    "react-dom": "16.14.0"
+    "react-dom": "16.14.0",
+    "react-bootstrap": "0.32.1"
   },
   "devDependencies": {
     "@spinnaker/eslint-plugin": "1.0.7",
@@ -34,7 +35,8 @@
     "eslint-plugin-react-hooks": "3.0.0",
     "rollup": "2.30.0",
     "shx": "0.3.2",
-    "typescript": "3.8.3"
+    "typescript": "3.8.3",
+    "@types/react-bootstrap": "0.32.5"
   },
   "files": [
     "build/dist"
