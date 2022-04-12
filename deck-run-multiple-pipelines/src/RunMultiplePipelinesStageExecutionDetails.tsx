@@ -1,14 +1,9 @@
 import React, { useState } from 'react';
 
+import { duration, ExecutionDetailsSection, IExecution, IExecutionDetailsSectionProps, timestamp, Tooltip } from '@spinnaker/core';
+
 import CancelModal from './modals/CancelModal';
 import RollbackModal from './modals/RollbackModal';
-
-import { ExecutionDetailsSection,
-         IExecutionDetailsSectionProps,
-         duration,
-         timestamp,
-         IExecution,
-         Tooltip} from '@spinnaker/core';
 
 declare global {
   interface Window {
@@ -67,6 +62,14 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
     setRollbackModalOpen(true);
   }
 
+  const handleAllRollbacksClick = (e: any) => {
+    props.stage.outputs.executionsList.forEach( (execution:any)  => {
+//         console.log("rollback");
+//         console.log(execution.trigger.parameters.app);
+    });
+//     setRollbackModalOpen(true);
+  }
+
   data.forEach( (execution: any) => {
     if (execution.trigger.correlationId != undefined) {
         if (execution.trigger.correlationId.includes(props.stage.id)) {
@@ -77,7 +80,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
 
     return (
       <ExecutionDetailsSection name={props.name} current={props.current}>
-       <table className="table">
+       <table className="table" style={{marginBottom: "0px"}}>
          <thead>
              <tr>
                  <th>App</th>
@@ -108,25 +111,39 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
        </>
        )}
          {props.stage.outputs.executionsList.map((execution: any, index: any) => {
+            const deployStage = execution.stages.find(function(stage: any) {
+                return stage.name == "Deploy";
+            });
             return (
              <tr className="clickable ng-scope info" analytics-on="click" analytics-category="Pipeline" key={execution.id}>
                  <td>{execution.trigger.parameters.app}</td>
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>
                  <td className="ng-binding">{duration(execution.endTime-execution.startTime)}</td>
                  <td><span className={"label label-default label-" + execution.status.toLowerCase()}>{execution.status}</span></td>
-                 <td><Tooltip value="Rollback deploy">
-                    <button className="link" onClick={handleRollbackClick(execution)}>
-                        <i className="glyphicon glyphicon-backward"/>
-                    </button>
-                 </Tooltip></td>
+                 {deployStage.outputs["outputs.createdArtifacts"] != undefined &&
+                    <td><Tooltip value="Rollback deploy">
+                        <button className="link" onClick={handleRollbackClick(execution)}>
+                            <i className="glyphicon glyphicon-backward"/>
+                        </button>
+                    </Tooltip></td>
+                 }
              </tr>
              );
           })}
        </tbody>
        </table>
+       {props.stage.outputs.executionsList.length != 0 &&
+        <div style={{display: "flex",justifyContent: "flex-end"}}>
+            <button onClick={handleAllRollbacksClick}>
+                <span className="glyphicon glyphicon-backward visible-lg-inline"></span>
+                <span className="glyphicon glyphicon-backward visible-md-inline visible-sm-inline"></span>
+                <span className="visible-lg-inline"> Rollback all apps </span>
+                </button>
+        </div>
+        }
        {modalOpen && <CancelModal setOpenModal={setModalOpen} executionData={executionData}/>}
        {rollbackModalOpen && <RollbackModal setOpenModal={setRollbackModalOpen} executionData={executionData}/>}
-       <div>
+       <div style={{marginTop:"6px"}}>
         <p>rollbackOnFailure is: {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure.toString()}</p>
        </div>
       </ExecutionDetailsSection>
