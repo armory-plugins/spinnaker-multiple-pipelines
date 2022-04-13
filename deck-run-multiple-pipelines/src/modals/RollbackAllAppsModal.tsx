@@ -86,7 +86,7 @@ function RollbackAllAppsModal(props: any) {
                     triggerAfterSave = true;
                     return response;
                 })
-                .catch(async e => {
+                .catch( e => {
                     if (e.data.message == "null") {
                         setError("No details provided.");
                     } else {
@@ -137,7 +137,7 @@ function RollbackAllAppsModal(props: any) {
                     )}
                     {error!="" && (
                     <div className="modal-body" style={{color:"#bb231e"}}>
-                        <h4>Error can not Rollback</h4>
+                        <h4>Error can not rollback</h4>
                         <p>{error}</p>
                     </div>
                     )}
