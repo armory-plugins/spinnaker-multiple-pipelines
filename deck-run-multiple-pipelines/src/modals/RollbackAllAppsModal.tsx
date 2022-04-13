@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { IPipeline, IStage, PipelineConfigService } from '@spinnaker/core';
 
@@ -9,66 +9,68 @@ declare global {
 }
 
 function RollbackAllAppsModal(props: any) {
-    const rollbackPipelineId = "";
-    const account = "";
-    const manifestName = "";
-    const location = "";
+    let rollbackPipelineId = "";
+    let account = "";
+    let manifestName = "";
+    let location = "";
 
-    const [error ,serError] = useState("");
+    const [error ,setError] = useState("");
+    const [loading ,setLoading] = useState("none");
+    const [isDisabled, setDisabled] = useState(false);
+    const [autoCloseModal, setAutoCloseModal] = useState(false);
 
-//     (async function() {
-//         const deployStage = props.allExecutions.stages.find(function(stage: any) {
-//             return stage.name == "Deploy";
-//         });
-//         if (deployStage.outputs["outputs.createdArtifacts"] === undefined) {
-//             if (error === "") {
-//                 serError("Can't perform rollback this pipeline did not create an artifact");
-//             }
-//             return;
-//         }
-//         account = deployStage.context["deploy.account.name"];
-//         manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;
-//         location = deployStage.outputs["outputs.createdArtifacts"][0].location;
-//
-//         if (rollbackPipelineId === "") {
-//             PipelineConfigService.getPipelinesForApplication(props.allExecutions.application)
-//                 .then((pipelines: any) => {
-//                     pipelines.forEach((p: any) => {
-//                         if (p.name == "rollbackOnFailure") {
-//                             rollbackPipelineId = p.id;
-//                         }
-//                     });
-//                 return pipelines;
-//             });
-//             //wait 300 ms to get the response back
-//             await new Promise(f => setTimeout(f, 300));
-//             if (rollbackPipelineId === "") {
-//                 if (error === "") {
-//                     serError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
-//                 }
-//             }
-//         }
-//     }());
+    useEffect(() => {
+        if (autoCloseModal===true && error==="") {
+            props.setOpenModal(false);
+        }
+    }, [error, autoCloseModal]);
 
-    const stage: IStage = {
-        "account": account,
-        "manifestName": manifestName,
-        "location": location,
-        "numRevisionsBack": 1,
-        "cloudProvider": "kubernetes",
-        "mode": "static",
-        name: "Undo Rollout (Manifest) " + "appName",
-        refId: "1", // unfortunately, we kept this loose early on, so it's either a string or a number
-        requisiteStageRefIds: [],
-        type: "undoRolloutManifest"
-    };
+    (function() {
+        if (rollbackPipelineId === "") {
+            props.allExecutions.forEach( async (execution:any) => {
+                const pipelines = await PipelineConfigService.getPipelinesForApplication(execution.application);
+                pipelines.forEach((p: any) => {
+                    if (p.name == "rollbackOnFailure") {
+                        rollbackPipelineId = p.id;
+                    }
+                });
+                if (rollbackPipelineId === "") {
+                    setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
+                }
+            });
+        }
+    }());
 
     const handleRollback = async () => {
+        setLoading("block");
+        setDisabled(true);
+        for (const execution of props.allExecutions) {
+            const deployStage = execution.stages.find(function(stage: any) {
+                return stage.name == "Deploy";
+            });
+
+        account = deployStage.context["deploy.account.name"];
+        manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;
+        location = deployStage.outputs["outputs.createdArtifacts"][0].location;
+
+        const stage: IStage = {
+            "account": account,
+            "manifestName": manifestName,
+            "location": location,
+            "numRevisionsBack": 1,
+            "cloudProvider": "kubernetes",
+            "mode": "static",
+            name: "Undo Rollout (Manifest) " + execution.trigger.parameters.app,
+            refId: "1", // unfortunately, we kept this loose early on, so it's either a string or a number
+            requisiteStageRefIds: [],
+            type: "undoRolloutManifest"
+        };
+
         if (error === "") {
            const stagesArray = [];
            stagesArray.push(stage);
             const pipeline: IPipeline = {
-                  application: props.allExecutions.application,
+                  application: execution.application,
                   id: rollbackPipelineId,
                   keepWaitingPipelines: false,
                   limitConcurrent: false,
@@ -77,12 +79,38 @@ function RollbackAllAppsModal(props: any) {
                   triggers: [],
                   parameterConfig: []
             };
-            PipelineConfigService.savePipeline(pipeline);
-            await new Promise(f => setTimeout(f, 200));
-            const trigger = PipelineConfigService.triggerPipeline(
-            props.allExecutions.application, "rollbackOnFailure");
-            props.setOpenModal(false);
+
+            let triggerAfterSave = false;
+            const savePipeline = await PipelineConfigService.savePipeline(pipeline)
+                .then(response => {
+                    triggerAfterSave = true;
+                    return response;
+                })
+                .catch(async e => {
+                    if (e.data.message == "null") {
+                        setError("No details provided.");
+                    } else {
+                        setError(e.data.message);
+                    }
+                });
+
+            if (triggerAfterSave) {
+                const trigger = await PipelineConfigService.triggerPipeline(
+                execution.application, "rollbackOnFailure")
+                    .then(response => {
+                        return response;
+                    }).catch(e => {
+                        if (e.data.message == "null") {
+                            setError("No details provided.");
+                        } else {
+                            setError(e.data.message);
+                        }
+                });
+            }
+
         }
+        }
+        setAutoCloseModal(true);
     };
 
     return (
@@ -115,7 +143,13 @@ function RollbackAllAppsModal(props: any) {
                     )}
                     <div className="modal-footer">
                         <button onClick={() => { props.setOpenModal(false);}} className="btn btn-default" type="button">Cancel</button>
-                        <button onClick={ handleRollback } className="btn btn-primary"type="button"><div className="flex-container-h horizontal middle"><i className="far fa-check-circle"></i><span className="sp-margin-xs-left">Rollback</span></div></button>
+                        <button onClick={ handleRollback } className="btn btn-primary"type="button" disabled={isDisabled}>
+                            <div className="flex-container-h horizontal middle">
+                                <svg xmlns="http://www.w3.org/2000/svg" style={{height:"16px", fill: "rgb(255, 255, 255)", display:loading}} preserveAspectRatio="xMidYMid" viewBox="24 24 52 52" display="block"><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.9166666666666666s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(30 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.8333333333333334s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(60 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.75s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(90 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.6666666666666666s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(120 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.5833333333333334s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(150 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.5s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(180 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.4166666666666667s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(210 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.3333333333333333s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(240 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.25s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(270 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.16666666666666666s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(300 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.08333333333333333s" repeatCount="indefinite"></animate></rect><rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="current" transform="rotate(330 50 50)"><animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="0s" repeatCount="indefinite"></animate></rect></svg>
+                                {loading=="none" && <i className="far fa-check-circle"></i>}
+                                <span className="sp-margin-xs-left">Rollback</span>
+                            </div>
+                        </button>
                     </div>
                 </form>
             </div>
