@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { duration, ExecutionDetailsSection, IExecution, IExecutionDetailsSectionProps, timestamp, Tooltip } from '@spinnaker/core';
 
 import CancelModal from './modals/CancelModal';
+import RollbackAllAppsModal from './modals/RollbackAllAppsModal';
 import RollbackModal from './modals/RollbackModal';
 
 declare global {
@@ -25,6 +26,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
    const [executionData, setExecutionData] = useState({});
    const [modalOpen, setModalOpen] = useState(false);
    const [rollbackModalOpen ,setRollbackModalOpen] = useState(false);
+   const [rollbackAllAppsModalOpen ,setRollbackAllAppsModalOpen] = useState(false);
    const [data ,setData] = useState([]);
 
    if (props.stage.outputs.executionsList == undefined) {
@@ -63,11 +65,12 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
   }
 
   const handleAllRollbacksClick = (e: any) => {
-    props.stage.outputs.executionsList.forEach( (execution:any)  => {
-//         console.log("rollback");
-//         console.log(execution.trigger.parameters.app);
-    });
+//     props.stage.outputs.executionsList.forEach( (execution:any)  => {
+// //         console.log("rollback");
+// //         console.log(execution.trigger.parameters.app);
+//     });
 //     setRollbackModalOpen(true);
+    setRollbackAllAppsModalOpen(true);
   }
 
   data.forEach( (execution: any) => {
@@ -77,6 +80,20 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
         }
     }
   });
+
+  function findIfExecutionListCreatedArtifacts(executions:any) {
+    for (const execution of executions) {
+        const deployStage = execution.stages.find(function(stage: any) {
+            return stage.name == "Deploy";
+        });
+        if (deployStage != undefined) {
+            if (deployStage.outputs["outputs.createdArtifacts"] != undefined) {
+                return true;
+            }
+        }
+    }
+    return false;
+  }
 
     return (
       <ExecutionDetailsSection name={props.name} current={props.current}>
@@ -132,7 +149,8 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
           })}
        </tbody>
        </table>
-       {props.stage.outputs.executionsList.length != 0 &&
+       {props.stage.outputs.executionsList.length > 0 &&
+       findIfExecutionListCreatedArtifacts(props.stage.outputs.executionsList) &&
         <div style={{display: "flex",justifyContent: "flex-end"}}>
             <button onClick={handleAllRollbacksClick}>
                 <span className="glyphicon glyphicon-backward visible-lg-inline"></span>
@@ -143,6 +161,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
         }
        {modalOpen && <CancelModal setOpenModal={setModalOpen} executionData={executionData}/>}
        {rollbackModalOpen && <RollbackModal setOpenModal={setRollbackModalOpen} executionData={executionData}/>}
+       {rollbackAllAppsModalOpen && <RollbackAllAppsModal setOpenModal={setRollbackAllAppsModalOpen} allExecutions={props.stage.outputs.executionsList}/>}
        <div style={{marginTop:"6px"}}>
         <p>rollbackOnFailure is: {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure.toString()}</p>
        </div>
