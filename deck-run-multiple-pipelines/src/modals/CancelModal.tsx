@@ -22,13 +22,19 @@ function CancelModal(props: any) {
     const handleCancel = async () => {
         setLoading("block");
         setDisabled(true);
-        const cancelExecution = await window.spinnaker.executionService.cancelExecution(props.executionData.application, props.executionData.id)
+        const cancelExecution = window.spinnaker.executionService.cancelExecution(props.executionData.application, props.executionData.id)
             .then(response => {
                 return response;
             }).catch( e => {
+                return e;
                 //it always goes to catch even when cancel its executed correctly
         });
-        //pending a timeout for when the execution doesn't exist anymore
+
+        //wait 2.5 sec for response
+        await new Promise(f => setTimeout(f, 2500));
+        if (cancelExecution["$$state"].status === 0) {
+            setError("This pipeline already completed its execution");
+        }
         setAutoCloseModal(true);
     }
 
@@ -49,6 +55,12 @@ function CancelModal(props: any) {
                     <div className="modal-header">
                         <h4 className="modal-title">Really stop pipeline execution of {props.executionData.trigger.parameters.app}?</h4>
                     </div>
+                    {error!="" && (
+                    <div className="modal-body" style={{color:"#bb231e"}}>
+                        <h4>Error can not cancel</h4>
+                        <p>{error}</p>
+                    </div>
+                    )}
                     <div className="modal-footer">
                         <button onClick={() => { props.setOpenModal(false);}} className="btn btn-default" type="button">Cancel</button>
                         <button onClick={handleCancel} className="btn btn-primary" type="button" disabled={isDisabled}>
