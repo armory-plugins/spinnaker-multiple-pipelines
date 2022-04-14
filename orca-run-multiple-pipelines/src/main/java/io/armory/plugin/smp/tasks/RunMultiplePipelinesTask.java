@@ -88,26 +88,25 @@ public class RunMultiplePipelinesTask implements Task {
         List<PipelineExecution> pipelineExecutions = new LinkedList<>();
         ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
-        //find the bigger stack to then wait on the mainThread until stack finish his executions
-        Stack<App> tempStack = new ArrayList<>(newTry.values()).get(0);
-        for (int i = 1; newTry.values().size() > i; i++) {
-            if (new ArrayList<>(newTry.values()).get(i).size() > tempStack.size()) {
-                tempStack = new ArrayList<>(newTry.values()).get(i);
-            }
-        }
+        //create a linked list of Threads to join on main thread
+        List<Thread> threadList = new LinkedList<>();
 
-        Thread biggerStackThread = null;
         //trigger pipelines in different Threads
         for (Stack<App> stack : newTry.values()) {
             Runnable triggerThis = () -> triggerThread(stack, gson, stage, pipelines, pipelineExecutions);
-            Thread triggerThread = new Thread(triggerThis);
-            if (tempStack.equals(stack)) {
-                System.out.println(tempStack.size());
-                biggerStackThread = triggerThread;
-            }
-            triggerThread.start();
+//            Thread triggerThread = new Thread(triggerThis);
+            threadList.add(new Thread(triggerThis));
         }
-        biggerStackThread.join();
+
+        threadList.forEach(Thread::start);
+
+        threadList.forEach(t -> {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
 
         if (pipelineExecutions.stream().anyMatch(p -> p.getStatus() != ExecutionStatus.SUCCEEDED)) {
             returnExecutionStatus = pipelineExecutions.stream().map(PipelineExecution::getStatus).filter(status -> status != ExecutionStatus.SUCCEEDED).findFirst().get();
