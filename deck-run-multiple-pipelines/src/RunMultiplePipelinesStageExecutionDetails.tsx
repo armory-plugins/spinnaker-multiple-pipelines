@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 import { duration, ExecutionDetailsSection, IExecution, IExecutionDetailsSectionProps, timestamp, Tooltip } from '@spinnaker/core';
 
+import CancelAllModal from './modals/CancelAllModal';
 import CancelModal from './modals/CancelModal';
 import RollbackAllAppsModal from './modals/RollbackAllAppsModal';
 import RollbackModal from './modals/RollbackModal';
@@ -22,11 +23,13 @@ declare global {
  */
 export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDetailsSectionProps) {
    const executionsSet = new Set();
+   let doingAutoRollback = false;
 
    const [executionData, setExecutionData] = useState({});
    const [modalOpen, setModalOpen] = useState(false);
    const [rollbackModalOpen ,setRollbackModalOpen] = useState(false);
    const [rollbackAllAppsModalOpen ,setRollbackAllAppsModalOpen] = useState(false);
+   const [cancelAllModalOpen, setCancelAllModalOpen] = useState(false);
    const [data ,setData] = useState([]);
 
    if (props.stage.outputs.executionsList == undefined) {
@@ -65,18 +68,20 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
   }
 
   const handleAllRollbacksClick = (e: any) => {
-//     props.stage.outputs.executionsList.forEach( (execution:any)  => {
-// //         console.log("rollback");
-// //         console.log(execution.trigger.parameters.app);
-//     });
-//     setRollbackModalOpen(true);
     setRollbackAllAppsModalOpen(true);
+  }
+
+  const handleCancelAllClick = (e:any) => {
+    setCancelAllModalOpen(true);
   }
 
   data.forEach( (execution: any) => {
     if (execution.trigger.correlationId != undefined) {
         if (execution.trigger.correlationId.includes(props.stage.id)) {
             executionsSet.add(execution);
+            if (execution.name == "rollbackOnFailure") {
+                doingAutoRollback = true;
+            }
         }
     }
   });
@@ -113,15 +118,22 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
         {Array.from(executionsSet).map((execution: any, index: any) => {
             return (
              <tr className="clickable ng-scope info" analytics-on="click" analytics-category="Pipeline" key={execution.id}>
-                 <td>{execution.trigger.parameters.app}</td>
+                 {execution.name != "rollbackOnFailure" &&
+                    <td>{execution.trigger.parameters.app}</td>
+                 }
+                 {execution.name == "rollbackOnFailure" &&
+                    <td>Rollback of {execution.stages[0].context.manifestName}</td>
+                 }
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>
                  <td className="ng-binding">{duration(execution.runningTimeInMs)}</td>
                  <td><span className={"label label-default label-" + execution.status.toLowerCase()}>{execution.status}</span></td>
-                 <td><Tooltip value="Cancel execution">
-                    <button className="link" onClick={handleCancelClick(execution)}>
-                        <i style={{color:"#bb231e"}} className="far fa-times-circle" />
-                    </button>
-                 </Tooltip></td>
+                 {execution.name != "rollbackOnFailure" &&
+                    <td><Tooltip value="Cancel execution">
+                        <button className="link" onClick={handleCancelClick(execution)}>
+                            <i style={{color:"#bb231e"}} className="far fa-times-circle" />
+                        </button>
+                    </Tooltip></td>
+                 }
              </tr>
              );
         })}
@@ -149,6 +161,15 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
           })}
        </tbody>
        </table>
+       {props.stage.outputs.executionsList.length === 0 &&
+        <div style={{display: "flex",justifyContent: "flex-end"}}>
+            <button onClick={handleCancelAllClick}>
+                <span className="far fa-times-circle visible-lg-inline"></span>
+                <span className="far fa-times-circle visible-md-inline visible-sm-inline"></span>
+                <span className="visible-lg-inline"> Cancel all executions </span>
+                </button>
+        </div>
+        }
        {props.stage.outputs.executionsList.length > 0 &&
        findIfExecutionListCreatedArtifacts(props.stage.outputs.executionsList) &&
         <div style={{display: "flex",justifyContent: "flex-end"}}>
@@ -162,8 +183,14 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
        {modalOpen && <CancelModal setOpenModal={setModalOpen} executionData={executionData}/>}
        {rollbackModalOpen && <RollbackModal setOpenModal={setRollbackModalOpen} executionData={executionData}/>}
        {rollbackAllAppsModalOpen && <RollbackAllAppsModal setOpenModal={setRollbackAllAppsModalOpen} allExecutions={props.stage.outputs.executionsList}/>}
+       {cancelAllModalOpen && <CancelAllModal setOpenModal={setRollbackAllAppsModalOpen} allRunning={executionsSet}/>}
+       {doingAutoRollback && props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true &&
+        <div>
+            <p>Triggering rollbacks on failure..</p>
+        </div>
+       }
        <div style={{marginTop:"6px"}}>
-        <p>rollbackOnFailure is: {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure.toString()}</p>
+        <p>rollback_onfailure is: {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure.toString()}</p>
        </div>
       </ExecutionDetailsSection>
     );
