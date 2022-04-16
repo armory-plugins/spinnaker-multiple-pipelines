@@ -8,34 +8,29 @@ declare global {
 
 function CancelAllModal(props: any) {
 
-    const [error ,setError] = useState("");
     const [loading ,setLoading] = useState("none");
     const [isDisabled, setDisabled] = useState(false);
     const [autoCloseModal, setAutoCloseModal] = useState(false);
 
     useEffect(() => {
-        if (autoCloseModal===true && error==="") {
+        if (autoCloseModal===true) {
             props.setOpenModal(false);
         }
-    }, [error, autoCloseModal]);
+    }, [autoCloseModal]);
 
     const handleCancel = async () => {
-//         setLoading("block");
-//         setDisabled(true);
-//         console.log(props.allRunning);
-//         const cancelExecution = window.spinnaker.executionService.cancelExecution(props.executionData.application, props.executionData.id)
-//             .then(response => {
-//                 return response;
-//             }).catch( e => {
-//                 return e;
-//                 //it always goes to catch even when cancel its executed correctly
-//         });
-//
-//         //wait 2.5 sec for response
-//         await new Promise(f => setTimeout(f, 2500));
-//         if (cancelExecution["$$state"].status === 0) {
-//             setError("This pipeline already completed its execution");
-//         }
+        setLoading("block");
+        setDisabled(true);
+        for (const execution of props.allRunning) {
+            window.spinnaker.executionService.cancelExecution(execution.application, execution.id)
+                .then(response => {
+                    return response;
+                }).catch( e => {
+                    return e;
+                    //it always goes to catch even when cancel its executed correctly
+            });
+        }
+        await new Promise(f => setTimeout(f, 1000));
         setAutoCloseModal(true);
     }
 
@@ -56,12 +51,6 @@ function CancelAllModal(props: any) {
                     <div className="modal-header">
                         <h4 className="modal-title">Really stop execution of all apps?</h4>
                     </div>
-                    {error!="" && (
-                    <div className="modal-body" style={{color:"#bb231e"}}>
-                        <h4>Error can not cancel</h4>
-                        <p>{error}</p>
-                    </div>
-                    )}
                     <div className="modal-footer">
                         <button onClick={() => { props.setOpenModal(false);}} className="btn btn-default" disabled={isDisabled} type="button">Cancel</button>
                         <button onClick={handleCancel} className="btn btn-primary" type="button" disabled={isDisabled}>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
-import { duration, ExecutionDetailsSection, IExecution, IExecutionDetailsSectionProps, timestamp, Tooltip } from '@spinnaker/core';
+import { duration, ExecutionDetailsSection, IExecution, IExecutionDetailsSectionProps,
+        timestamp, Tooltip } from '@spinnaker/core';
 
 import CancelAllModal from './modals/CancelAllModal';
 import CancelModal from './modals/CancelModal';
@@ -23,7 +24,7 @@ declare global {
  */
 export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDetailsSectionProps) {
    const executionsSet = new Set();
-   let doingAutoRollback = false;
+   let runningRollbackOnFailure = false;
 
    const [executionData, setExecutionData] = useState({});
    const [modalOpen, setModalOpen] = useState(false);
@@ -80,7 +81,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
         if (execution.trigger.correlationId.includes(props.stage.id)) {
             executionsSet.add(execution);
             if (execution.name == "rollbackOnFailure") {
-                doingAutoRollback = true;
+                runningRollbackOnFailure = true;
             }
         }
     }
@@ -95,6 +96,15 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
             if (deployStage.outputs["outputs.createdArtifacts"] != undefined) {
                 return true;
             }
+        }
+    }
+    return false;
+  }
+
+  function checkTerminalStatus(executions:any) {
+    for (const execution of executions) {
+        if (execution.status == "TERMINAL") {
+            return true;
         }
     }
     return false;
@@ -183,10 +193,17 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
        {modalOpen && <CancelModal setOpenModal={setModalOpen} executionData={executionData}/>}
        {rollbackModalOpen && <RollbackModal setOpenModal={setRollbackModalOpen} executionData={executionData}/>}
        {rollbackAllAppsModalOpen && <RollbackAllAppsModal setOpenModal={setRollbackAllAppsModalOpen} allExecutions={props.stage.outputs.executionsList}/>}
-       {cancelAllModalOpen && <CancelAllModal setOpenModal={setRollbackAllAppsModalOpen} allRunning={executionsSet}/>}
-       {doingAutoRollback && props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true &&
+       {cancelAllModalOpen && <CancelAllModal setOpenModal={setCancelAllModalOpen} allRunning={executionsSet}/>}
+       {runningRollbackOnFailure && props.stage.outputs.executionsList.length === 0
+       && props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true &&
         <div>
             <p>Triggering rollbacks on failure..</p>
+        </div>
+       }
+       {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true && props.stage.outputs.executionsList.length > 0
+       && checkTerminalStatus(props.stage.outputs.executionsList) &&
+        <div>
+            <p>All rollbacks already triggered</p>
         </div>
        }
        <div style={{marginTop:"6px"}}>

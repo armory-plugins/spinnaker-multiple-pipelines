@@ -39,7 +39,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit.client.Response;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -168,11 +173,18 @@ public class RunMultiplePipelinesTask implements Task {
                 } else {
                     String id = finalPipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findFirst().get().get("id").toString();
                     rollbackOnFailurePipeline.put("id", id);
-                    front50Service.updatePipeline(id, rollbackOnFailurePipeline);
+                    HttpClient httpClient = HttpClient.newBuilder().build();
+                    HttpRequest updatePipelineRequest = HttpRequest.newBuilder(URI.create(front50Service.updatePipeline(id, rollbackOnFailurePipeline).getUrl())).build();
+                    try {
+                        HttpResponse<String> response = httpClient.send(updatePipelineRequest, HttpResponse.BodyHandlers.ofString());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
 
                 try {
-                    Thread.sleep(6000);
                     List<Map<String, Object>> filterPipelinesList = front50Service.getPipelines(application, false);
                     Map<String, Object> triggerThisRollback = filterPipelinesList.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findAny().get();
                     dependentPipelineStarter.trigger(
@@ -183,7 +195,7 @@ public class RunMultiplePipelinesTask implements Task {
                             stage.getId(),
                             stage.getExecution().getAuthentication()
                     );
-                } catch (InterruptedException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
 
