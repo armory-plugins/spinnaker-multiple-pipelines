@@ -37,8 +37,14 @@ import lombok.SneakyThrows;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import retrofit.client.Response;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Extension
 public class RunMultiplePipelinesTask implements Task {
@@ -88,26 +95,25 @@ public class RunMultiplePipelinesTask implements Task {
         List<PipelineExecution> pipelineExecutions = new LinkedList<>();
         ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
-        //find the bigger stack to then wait on the mainThread until stack finish his executions
-        Stack<App> tempStack = new ArrayList<>(newTry.values()).get(0);
-        for (int i = 1; newTry.values().size() > i; i++) {
-            if (new ArrayList<>(newTry.values()).get(i).size() > tempStack.size()) {
-                tempStack = new ArrayList<>(newTry.values()).get(i);
-            }
+        //create a linked list of Threads to join on main thread
+        List<Thread> threadList = new LinkedList<>();
+
+        //trigger pipelines in different Threads
+        AtomicBoolean statusTerminal = new AtomicBoolean(false);
+        for (Stack<App> stack : newTry.values()) {
+            Runnable triggerThis = () -> triggerThread(stack, gson, stage, pipelines, pipelineExecutions, statusTerminal);
+            threadList.add(new Thread(triggerThis));
         }
 
-        Thread biggerStackThread = null;
-        //trigger pipelines in different Threads
-        for (Stack<App> stack : newTry.values()) {
-            Runnable triggerThis = () -> triggerThread(stack, gson, stage, pipelines, pipelineExecutions);
-            Thread triggerThread = new Thread(triggerThis);
-            if (tempStack.equals(stack)) {
-                System.out.println(tempStack.size());
-                biggerStackThread = triggerThread;
+        threadList.forEach(Thread::start);
+
+        threadList.forEach(t -> {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-            triggerThread.start();
-        }
-        biggerStackThread.join();
+        });
 
         if (pipelineExecutions.stream().anyMatch(p -> p.getStatus() != ExecutionStatus.SUCCEEDED)) {
             returnExecutionStatus = pipelineExecutions.stream().map(PipelineExecution::getStatus).filter(status -> status != ExecutionStatus.SUCCEEDED).findFirst().get();
@@ -131,7 +137,9 @@ public class RunMultiplePipelinesTask implements Task {
     private void doRollbacks(List<PipelineExecution> pipelineExecutions, StageExecution stage, String application) {
         List<Map<String, Object>> finalPipelines = front50Service.getPipelines(application, false);
         pipelineExecutions.forEach(pipelineExecution -> {
-            StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("Deploy")).findFirst().get();
+            StageExecution deployStage = pipelineExecution.getStages().stream().filter(stageExecution -> stageExecution.getName().contains("Deploy")).findFirst().orElseThrow(() -> {
+                return new UnsupportedOperationException("No staged named Deploy found to execute automatic rollback, set rollback_onfailure to false");
+            });
             if (deployStage.getOutputs().get("outputs.createdArtifacts") != null) {
                 List<Map<String, Object>> createdArtifacts = (List<Map<String, Object>>) deployStage.getOutputs().get("outputs.createdArtifacts");
                 List<Map<String, Object>> manifests = (List<Map<String, Object>>) deployStage.getOutputs().get("manifests");
@@ -161,16 +169,22 @@ public class RunMultiplePipelinesTask implements Task {
 
 
                 if (!finalPipelines.stream().anyMatch(p -> p.get("name").equals("rollbackOnFailure"))) {
-                    front50Service.savePipeline(rollbackOnFailurePipeline, true);
-                } else if (!finalPipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure"))
-                        .anyMatch(filterP -> filterP.get("stages").hashCode() == Arrays.asList(undoRolloutContext).hashCode())) {
+                    throw new UnsupportedOperationException("Pipeline \"rollbackOnFailure\" not found create a pipeline with that name");
+                } else {
                     String id = finalPipelines.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findFirst().get().get("id").toString();
                     rollbackOnFailurePipeline.put("id", id);
-                    front50Service.updatePipeline(id, rollbackOnFailurePipeline);
+                    HttpClient httpClient = HttpClient.newBuilder().build();
+                    HttpRequest updatePipelineRequest = HttpRequest.newBuilder(URI.create(front50Service.updatePipeline(id, rollbackOnFailurePipeline).getUrl())).build();
+                    try {
+                        HttpResponse<String> response = httpClient.send(updatePipelineRequest, HttpResponse.BodyHandlers.ofString());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
 
                 try {
-                    Thread.sleep(7000);
                     List<Map<String, Object>> filterPipelinesList = front50Service.getPipelines(application, false);
                     Map<String, Object> triggerThisRollback = filterPipelinesList.stream().filter(p -> p.get("name").equals("rollbackOnFailure")).findAny().get();
                     dependentPipelineStarter.trigger(
@@ -181,7 +195,7 @@ public class RunMultiplePipelinesTask implements Task {
                             stage.getId(),
                             stage.getExecution().getAuthentication()
                     );
-                } catch (InterruptedException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
 
@@ -189,9 +203,10 @@ public class RunMultiplePipelinesTask implements Task {
         });
     }
 
-    private void triggerThread(Stack<App> stack, Gson gson, StageExecution stage, List<Map<String, Object>> pipelines, List<PipelineExecution> pipelineExecutions) {
+    private void triggerThread(Stack<App> stack, Gson gson, StageExecution stage, List<Map<String, Object>> pipelines,
+                               List<PipelineExecution> pipelineExecutions, AtomicBoolean statusTerminal) {
         int i = 0;
-        while (stack.size() > i) {
+        while (stack.size() > i && !statusTerminal.get()) {
             App app = stack.pop();
             Map<String, Object> pipelineConfig = pipelines.stream().filter(pipeline -> pipeline.get("name").equals(app.getChildPipeline())).findFirst().orElse(null);
             String jsonString = gson.toJson(pipelineConfig);
@@ -209,6 +224,9 @@ public class RunMultiplePipelinesTask implements Task {
                 pipelineExecutions.add(triggerInOrder.getPipelineExecution());
             }
             if (triggerInOrder.getPipelineExecution().getStatus() != ExecutionStatus.SUCCEEDED) {
+                if (triggerInOrder.getPipelineExecution().getStatus() == ExecutionStatus.TERMINAL) {
+                    statusTerminal.set(true);
+                }
                 stack.removeAllElements();
                 break;
             }
