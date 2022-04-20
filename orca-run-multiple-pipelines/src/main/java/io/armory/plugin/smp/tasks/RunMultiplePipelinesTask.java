@@ -24,8 +24,8 @@ import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
-import com.netflix.spinnaker.orca.front50.Front50Service;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
+import com.netflix.spinnaker.orca.front50.Front50Service;
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
 import io.armory.plugin.smp.config.RunMultiplePipelinesContext;
 import javax.annotation.Nonnull;
@@ -37,7 +37,6 @@ import lombok.SneakyThrows;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import retrofit.client.Response;
 
 import java.io.IOException;
 import java.lang.reflect.Type;

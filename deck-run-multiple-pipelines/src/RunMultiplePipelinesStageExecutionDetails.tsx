@@ -159,7 +159,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>
                  <td className="ng-binding">{duration(execution.endTime-execution.startTime)}</td>
                  <td><span className={"label label-default label-" + execution.status.toLowerCase()}>{execution.status}</span></td>
-                 {deployStage.outputs["outputs.createdArtifacts"] != undefined &&
+                 {deployStage != undefined && deployStage.outputs["outputs.createdArtifacts"] != undefined &&
                     <td><Tooltip value="Rollback deploy">
                         <button className="link" onClick={handleRollbackClick(execution)}>
                             <i className="glyphicon glyphicon-backward"/>
