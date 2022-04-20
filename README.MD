@@ -56,34 +56,34 @@ bundle_web:
 Example:
 ```yaml
 bundle_web:
-  pulse:
+  appName2:
     arguments:
-      app: pulse
+      app: appName2
       deploymentFrezeOverride: true
       skipCanary: true
       tag: "1.1.0"
       targetEnv: targetEnv
     child_pipeline: childPipeline
   rollback_onfailure: true
-  web:
+  appName1:
     arguments:
-      app: web
+      app: appName1
       deploymentFrezeOverride: true
       skipCanary: true
       tag: "1.1.0"
       targetEnv: targetEnv
     child_pipeline: childPipeline
     depends_on:
-      - pulse
+      - appName2
 ```
 
 ## yaml config specifics
 - The bundle name needs to be bundle_web
 - All apps need an argument app with the same name example:
 ```
-  pulse:
+  appName1:
     arguments:
-      app: pulse
+      app: appName1
   ```
 - The child_pipeline name needs to exist on the same spinnaker application
 - For rollback_onfailure or manual rollbacks to work you need to create a pipeline with the name rollbackOnFailure in the same application
