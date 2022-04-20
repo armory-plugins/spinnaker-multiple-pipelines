@@ -1,6 +1,6 @@
 RunMultiplePipelines plugin adds a new custom stage to Spinnaker to trigger multiple child pipelines based on a yaml config.
 # Installation & Configuration
-1. Identify the released version of the Evaluate Artifacts plugin you wish to install. Official releases are found [here](https://github.com/armory/multiple-pipelines-plugin-releases).
+1. Identify the released version of the RunMultiplePipelines plugin you wish to install. Official releases are found [here](https://github.com/armory/multiple-pipelines-plugin-releases).
 2. In your Spinnaker configuration, add the following repository & plugin configuration.
 ```yaml
 spinnakerConfig:
