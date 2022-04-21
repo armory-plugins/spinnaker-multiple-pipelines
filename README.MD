@@ -86,6 +86,7 @@ bundle_web:
       app: appName1
   ```
 - The child_pipeline name needs to exist on the same spinnaker application
+- The Deploy (manifest) stage you wish to rollback in your child_pipeline has to be renamed "Deploy"
 - For rollback_onfailure or manual rollbacks to work you need to create a pipeline with the name rollbackOnFailure in the same application
 
 # Spinnaker Multiple Pipelines plugin development
