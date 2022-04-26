@@ -34,6 +34,6 @@ docker {
     def registryOrg = System.getenv('REGISTRY_ORG') ?: "armory"
     name "$registry/$registryOrg/multiplepipelines-plugin:$version"
     files project.file("build/distributions"), project.file("build-tools/install.sh")
-    buildArgs([PLUGIN_ID: "RunMultiplePipelines-$version"])
+    buildArgs([PLUGIN_ID: "$rootProject.name-$version"])
     copySpec.from("build/distributions").into("distributions")
 }
