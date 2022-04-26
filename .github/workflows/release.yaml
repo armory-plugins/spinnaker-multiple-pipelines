@@ -52,7 +52,7 @@ jobs:
       - name: Publish image
         run: |
           echo "Logging in to dockerhub"
-          echo ${{ secrets.DOCKER_TOKEN }} | docker login --username '${{ secrets.DOCKERHUB_USER }}' --password-stdin '${{ secrets.DOCKER_HUB_PASS }}' docker.io
+          echo ${{ secrets.DOCKER_HUB_PASS }} | docker login --username '${{ secrets.DOCKERHUB_USER }}' --password-stdin docker.io
           VERSION_TYPE='release' BRANCH='main' ./gradlew dockerPush
 
       - name: Create release in GitHub
