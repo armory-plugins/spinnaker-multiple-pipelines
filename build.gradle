@@ -6,6 +6,7 @@ buildscript {
 
 plugins {
     id("io.spinnaker.plugin.bundler").version("$spinnakerGradleVersion")
+    id "com.palantir.docker" version "0.33.0"
 }
 
 version 'v1.0.0'
@@ -25,4 +26,14 @@ subprojects { project ->
 
 task version() {
     println(version)
+}
+
+docker {
+    dockerfile project.file("build-tools/Dockerfile")
+    def registry = System.getenv('REGISTRY') ?: "docker.io"
+    def registryOrg = System.getenv('REGISTRY_ORG') ?: "armory"
+    name "$registry/$registryOrg/RunMultiplePipelines-plugin:$version"
+    files project.file("build/distributions"), project.file("build-tools/install.sh")
+    buildArgs([PLUGIN_ID: "smp-$version"])
+    copySpec.from("build/distributions").into("distributions")
 }
