@@ -38,3 +38,17 @@ docker {
     buildArgs([PLUGIN_ID: "$rootProject.name-$version"])
     copySpec.from("build/distributions").into("distributions")
 }
+
+task generatePluginsJson {
+    doLast {
+        def pluginInfoFile = new File("$buildDir/distributions/plugin-info.json")
+        def pluginInfo = new JsonSlurper().parse(pluginInfoFile)
+
+        pluginInfo.releases[0].url = "file:///opt/spinnaker/lib/local-plugins/eap/${version}/eap-${version}.zip"
+        def plugins = [pluginInfo]
+        File dockerPlugins = new File("$buildDir/distributions/plugins-docker.json")
+        dockerPlugins.write(JsonOutput.prettyPrint(JsonOutput.toJson(plugins)))
+    }
+}
+
+releaseBundle.finalizedBy generatePluginsJson
