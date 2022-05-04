@@ -14,6 +14,6 @@ RUN mkdir -p /opt/smp
 
 ADD distributions/${PLUGIN_ID}.zip /opt/smp/
 ADD distributions/plugin-info.json /opt/smp/
-ADD distributions/install.sh /usr/bin/install-plugin.sh
+ADD distributions/install.sh /usr/bin/install-plugin
 
-CMD ["install-plugin.sh"]
+CMD ["install-plugin"]

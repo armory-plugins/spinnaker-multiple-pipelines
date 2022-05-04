@@ -29,12 +29,11 @@ task version() {
 }
 
 docker {
-    version.substring(1)
     dockerfile project.file("build-tools/Dockerfile")
     def registry = "docker.io"
     def registryOrg = "daper9812"
-    name "$registry/$registryOrg/$rootProject.name-plugin:$version"
+    name "$registry/$registryOrg/$rootProject.name-plugin:$version.substring(1)"
     files project.file("build/distributions"), project.file("build-tools/install.sh")
-    buildArgs([PLUGIN_ID: "$rootProject.name-$version"])
+    buildArgs([PLUGIN_ID: "$rootProject.name-$version.substring(1)"])
     copySpec.from("build/distributions").into("distributions")
 }
