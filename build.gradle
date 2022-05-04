@@ -29,7 +29,7 @@ task version() {
 }
 
 docker {
-    version = version.substring(1)
+    version.substring(1)
     dockerfile project.file("build-tools/Dockerfile")
     def registry = "docker.io"
     def registryOrg = "daper9812"
