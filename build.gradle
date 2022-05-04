@@ -35,6 +35,6 @@ docker {
     def registryOrg = "daper9812"
     name "$registry/$registryOrg/$rootProject.name-plugin:$dockerVersion"
     files project.file("build/distributions"), project.file("build-tools/install.sh")
-    buildArgs([PLUGIN_ID: "$rootProject.name-$dockerVersion"])
+    buildArgs([PLUGIN_ID: "$rootProject.name-$version"])
     copySpec.from("build/distributions").into("distributions")
 }
