@@ -12,34 +12,32 @@ plugins {
     id "com.palantir.docker" version "0.33.0"
 }
 
-version 'v1.0.2'
+version '1.0.2'
 
 spinnakerBundle {
     pluginId = "Armory.RunMultiplePipelines"
     description = "This plugin adds a new custom stage to Spinnaker to trigger multiple child pipelines."
     provider = "https://armory.io"
-    version = rootProject.version
+    version = "v$rootProject.version"
 }
 
 subprojects { project ->
     group = "io.armory.plugin.smp"
-    version = rootProject.version
+    version = "v$rootProject.version"
     apply plugin: "maven-publish"
 }
 
 task version() {
-    println(version)
+    println("v$rootProject.version")
 }
 
 docker {
-    def dockerVersion = version.substring(1)
     dockerfile project.file("build-tools/Dockerfile")
     def registry = "docker.io"
     def registryOrg = "daper9812"
-    tag "$dockerVersion", "$dockerVersion" 
-    name "$registry/$registryOrg/$rootProject.name-plugin:$dockerVersion"
+    name "$registry/$registryOrg/$rootProject.name-plugin:$version"
     files project.file("build/distributions"), project.file("build-tools/install.sh")
-    buildArgs([PLUGIN_ID: "$rootProject.name-$version"])
+    buildArgs([PLUGIN_ID: "$rootProject.name-v$version"])
     copySpec.from("build/distributions").into("distributions")
 }
 
@@ -48,7 +46,7 @@ task generatePluginsJson {
         def pluginInfoFile = new File("$buildDir/distributions/plugin-info.json")
         def pluginInfo = new JsonSlurper().parse(pluginInfoFile)
 
-        pluginInfo.releases[0].url = "file:///opt/spinnaker/lib/local-plugins/eap/${version}/eap-${version}.zip"
+        pluginInfo.releases[0].url = "file:///opt/spinnaker/lib/local-plugins/smp/v${version}/$rootProject.name-v${version}.zip"
         def plugins = [pluginInfo]
         File dockerPlugins = new File("$buildDir/distributions/plugins-docker.json")
         dockerPlugins.write(JsonOutput.prettyPrint(JsonOutput.toJson(plugins)))
