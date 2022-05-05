@@ -44,8 +44,8 @@ jobs:
           echo ::set-output name=PROJECT::$(basename `pwd`)
           echo ::set-output name=PROJECT_KEBAB::$(basename `pwd` | sed 's/\([a-z0-9]\)\([A-Z]\)/\1_\L\2/g' | tr '[:upper:]' '[:lower:]' )
           echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-          echo ::set-output name=VERSION-zip::${{steps.get_project_info.outputs.VERSION}}-v
           echo ::set-output name=REPO::${GITHUB_REPOSITORY}
+          echo ::set-output name=VERSION-ZIP::$(`./gradlew properties -q | grep version | awk '{print $2}'`)
 
       - name: Build Image
         run: |
@@ -74,10 +74,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} 
-          asset_path: ./build/distributions/${{ steps.get_project_info.outputs.PROJECT }}-${{ steps.get_project_info.outputs.VERSION-zip }}.zip
-          asset_name: ${{ steps.get_project_info.outputs.PROJECT }}-${{ steps.get_project_info.outputs.VERSION-zip }}.zip
+          asset_path: ./build/distributions/${{ steps.get_project_info.outputs.PROJECT }}-${{ steps.get_project_info.outputs.VERSION-ZIP }}.zip
+          asset_name: ${{ steps.get_project_info.outputs.PROJECT }}-${{ steps.get_project_info.outputs.VERSION-ZIP }}.zip
           asset_content_type: application/zip
 
       - name: add release to plugin repo
         run: |
-          curl -v -XPOST -u "${{ secrets.USERNAME }}:${{ secrets.TOKEN }}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" https://api.github.com/repos/armory/multiple-pipelines-plugin-releases/dispatches --data "{\"event_type\": \"onPluginRelease\", \"client_payload\": {\"org\": \"armory\", \"repo\": \"spinnaker-multiple-pipelines\", \"releaseOrg\": \"armory\", \"releaseRepo\": \"multiple-pipelines-plugin-releases\", \"version\": \"${{ steps.get_project_info.outputs.VERSION }}\", \"artifactName\": \"${{ steps.get_project_info.outputs.PROJECT }}-${{ steps.get_project_info.outputs.VERSION-zip  }}.zip\", \"released\": $(cat build/distributions/plugin-info.json)}}"
+          curl -v -XPOST -u "${{ secrets.USERNAME }}:${{ secrets.TOKEN }}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" https://api.github.com/repos/armory/multiple-pipelines-plugin-releases/dispatches --data "{\"event_type\": \"onPluginRelease\", \"client_payload\": {\"org\": \"armory\", \"repo\": \"spinnaker-multiple-pipelines\", \"releaseOrg\": \"armory\", \"releaseRepo\": \"multiple-pipelines-plugin-releases\", \"version\": \"${{ steps.get_project_info.outputs.VERSION }}\", \"artifactName\": \"${{ steps.get_project_info.outputs.PROJECT }}-${{ steps.get_project_info.outputs.VERSION-ZIP  }}.zip\", \"released\": $(cat build/distributions/plugin-info.json)}}"

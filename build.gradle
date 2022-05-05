@@ -28,7 +28,7 @@ subprojects { project ->
 }
 
 task version() {
-    println("$rootProject.version")
+    println(version)
 }
 
 docker {
