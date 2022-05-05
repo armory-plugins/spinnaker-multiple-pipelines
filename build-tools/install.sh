@@ -4,7 +4,7 @@ set -ex
 
 echo "Installing plugin $PLUGIN_FILE"
 
-VERSION=$(echo "$PLUGIN_ID" | sed 's/smp-//')
+VERSION=$(echo "$PLUGIN_ID" | sed 's/spinnaker-multiple-pipelines-//')
 
 cd /opt/smp
 
