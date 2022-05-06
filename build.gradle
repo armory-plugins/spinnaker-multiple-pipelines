@@ -34,7 +34,7 @@ task version() {
 docker {
     dockerfile project.file("build-tools/Dockerfile")
     def registry = "docker.io"
-    def registryOrg = "armory"
+    def registryOrg = "daper9812"
     name "$registry/$registryOrg/$rootProject.name-plugin:$version"
     files project.file("build/distributions"), project.file("build-tools/install.sh")
     buildArgs([PLUGIN_ID: "$rootProject.name-$version"])
