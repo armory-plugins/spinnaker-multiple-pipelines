@@ -16,4 +16,5 @@ ADD distributions/${PLUGIN_ID}.zip /opt/smp/
 ADD distributions/plugins-docker.json /opt/smp/
 ADD distributions/install.sh /usr/bin/install-plugin
 
+chmod +x /usr/bin/install-plugin
 CMD install-plugin
