@@ -13,6 +13,8 @@ RUN apt-get remove --purge patch -y
 RUN mkdir -p /opt/smp
 
 ADD distributions/${PLUGIN_ID}.zip /opt/smp/
-ADD distributions/install.sh /usr/bin/install-plugin.sh
+ADD distributions/plugins-docker.json /opt/smp/
+ADD distributions/install.sh /usr/bin/install-plugin
 
-CMD ["install-plugin.sh"]
+RUN chmod +x /usr/bin/install-plugin
+CMD install-plugin

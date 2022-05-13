@@ -1,3 +1,6 @@
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
+
 buildscript {
     repositories {
         mavenCentral()
@@ -9,7 +12,7 @@ plugins {
     id "com.palantir.docker" version "0.33.0"
 }
 
-version 'v1.0.0'
+version '1.0.2'
 
 spinnakerBundle {
     pluginId = "Armory.RunMultiplePipelines"
@@ -30,10 +33,24 @@ task version() {
 
 docker {
     dockerfile project.file("build-tools/Dockerfile")
-    def registry = System.getenv('REGISTRY') ?: "docker.io"
-    def registryOrg = System.getenv('REGISTRY_ORG') ?: "armory"
-    name "$registry/$registryOrg/RunMultiplePipelines-plugin:$version"
+    def registry = "docker.io"
+    def registryOrg = "armory"
+    name "$registry/$registryOrg/$rootProject.name-plugin:$version"
     files project.file("build/distributions"), project.file("build-tools/install.sh")
-    buildArgs([PLUGIN_ID: "smp-$version"])
+    buildArgs([PLUGIN_ID: "$rootProject.name-$version"])
     copySpec.from("build/distributions").into("distributions")
 }
+
+task generatePluginsJson {
+    doLast {
+        def pluginInfoFile = new File("$buildDir/distributions/plugin-info.json")
+        def pluginInfo = new JsonSlurper().parse(pluginInfoFile)
+
+        pluginInfo.releases[0].url = "file:///opt/spinnaker/lib/local-plugins/smp/${version}/$rootProject.name-${version}.zip"
+        def plugins = [pluginInfo]
+        File dockerPlugins = new File("$buildDir/distributions/plugins-docker.json")
+        dockerPlugins.write(JsonOutput.prettyPrint(JsonOutput.toJson(plugins)))
+    }
+}
+
+releaseBundle.finalizedBy generatePluginsJson
