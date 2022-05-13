@@ -18,12 +18,12 @@ spinnakerBundle {
     pluginId = "Armory.RunMultiplePipelines"
     description = "This plugin adds a new custom stage to Spinnaker to trigger multiple child pipelines."
     provider = "https://armory.io"
-    version = "$rootProject.version"
+    version = rootProject.version
 }
 
 subprojects { project ->
     group = "io.armory.plugin.smp"
-    version = "$rootProject.version"
+    version = rootProject.version
     apply plugin: "maven-publish"
 }
 
