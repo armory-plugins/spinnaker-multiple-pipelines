@@ -16,6 +16,8 @@
 
 package io.armory.plugin.smp;
 
+import com.netflix.spinnaker.kork.plugins.api.spring.SpringLoader;
+import com.netflix.spinnaker.kork.plugins.api.spring.SpringLoaderPlugin;
 import com.netflix.spinnaker.orca.api.pipeline.graph.StageDefinitionBuilder;
 import com.netflix.spinnaker.orca.api.pipeline.graph.TaskNode;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
@@ -27,8 +29,15 @@ import org.pf4j.Plugin;
 import org.pf4j.PluginWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 
-public class RunMultiplePipelinesPlugin extends Plugin {
+import java.util.Collections;
+import java.util.List;
+
+public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
+    private static final String ARMORY_IAM_SPRING_LOADER_BEAN_NAME = String.format("Armory.RunMultiplePipelines.%s", SpringLoader.class.getName());
+    private static final String SQL_CONFIGURATION_BEAN_NAME = "sqlConfiguration";
+
     private Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesPlugin.class);
     /**
      * Constructor to be used by plugin manager for plugin instantiation.
@@ -43,13 +52,28 @@ public class RunMultiplePipelinesPlugin extends Plugin {
 
     @Override
     public void start() {
-        logger.info("Starting RunMultiplePipelines plugin...");
+        logger.info("Starting RunMultiplePipelines plugin...siuu");
     }
 
     @Override
     public void stop() {
         logger.info("Stopping RunMultiplePipelines plugin...");
     }
+
+    @Override
+    public List<String> getPackagesToScan() {
+        return Collections.singletonList("io.armory.plugin.smp");
+    }
+
+    @Override
+    public void registerBeanDefinitions(BeanDefinitionRegistry registry) {
+        super.registerBeanDefinitions(registry);
+        if (registry.containsBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)) {
+            registry.getBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)
+                    .setDependsOn(ARMORY_IAM_SPRING_LOADER_BEAN_NAME);
+        }
+    }
+
 }
 
 @Extension
