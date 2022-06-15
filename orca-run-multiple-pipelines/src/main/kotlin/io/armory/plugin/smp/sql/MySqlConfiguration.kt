@@ -16,12 +16,12 @@ import org.springframework.context.annotation.Configuration
 import java.util.*
 
 @Configuration
-class MySqlConfiguration {
+open class MySqlConfiguration {
 
     @ConditionalOnProperty("execution-repository.sql.enabled")
     @Bean
     @ExposeToApp
-    fun sqlExecutionRepository(
+    open fun sqlExecutionRepository(
         dsl: DSLContext,
         mapper: ObjectMapper,
         registry: Registry,
@@ -39,7 +39,6 @@ class MySqlConfiguration {
         interlink = interlink.orElse(null),
         executionRepositoryListeners = executionRepositoryListeners
     ).let {
-        print("llegue aqui si sirvo")
         InstrumentedProxy.proxy(registry, it, "sql.executions", mapOf(Pair("repository", "primary"))) as ExecutionRepository
     }
 

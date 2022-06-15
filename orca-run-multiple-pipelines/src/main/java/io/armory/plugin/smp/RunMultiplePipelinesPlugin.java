@@ -24,13 +24,16 @@ import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask;
 import javax.annotation.Nonnull;
 
-import org.pf4j.Extension;
-import org.pf4j.Plugin;
+import org.apache.commons.lang3.tuple.Pair;
 import org.pf4j.PluginWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanDefinitionStoreException;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -52,7 +55,7 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
 
     @Override
     public void start() {
-        logger.info("Starting RunMultiplePipelines plugin...siuu");
+        logger.info("Starting RunMultiplePipelines plugin...");
     }
 
     @Override
@@ -67,16 +70,30 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
 
     @Override
     public void registerBeanDefinitions(BeanDefinitionRegistry registry) {
+        List<Pair<String, Class>> beanList =  Arrays.asList(
+                Pair.of("RunMultiplePipelinesStage", RunMultiplePipelinesStage.class),
+                Pair.of("RunMultiplePipelinesTask", RunMultiplePipelinesTask.class)
+        );
+        beanList.forEach( curr -> {
+            BeanDefinition lazyLoadCredentialsRepositoryDefinition = primaryBeanDefinitionFor(curr.getRight());
+            try {
+                registry.registerBeanDefinition(curr.getLeft(), lazyLoadCredentialsRepositoryDefinition);
+            } catch (BeanDefinitionStoreException e) {
+                log.error("Could not register bean {}", lazyLoadCredentialsRepositoryDefinition.getBeanClassName());
+                throw new RuntimeException(e);
+            }
+        });
+
         super.registerBeanDefinitions(registry);
+
         if (registry.containsBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)) {
             registry.getBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)
                     .setDependsOn(ARMORY_IAM_SPRING_LOADER_BEAN_NAME);
         }
     }
-
 }
 
-@Extension
+@Component
 class RunMultiplePipelinesStage implements StageDefinitionBuilder {
     @Override
     public void taskGraph(@Nonnull StageExecution stage, @Nonnull TaskNode.Builder builder) {
