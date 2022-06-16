@@ -62,6 +62,7 @@ import org.jooq.impl.DSL.value
 import org.slf4j.LoggerFactory
 import rx.Observable
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class ConcurrentSqlExecutionRepository(
@@ -805,6 +806,7 @@ class ConcurrentSqlExecutionRepository(
                 storeCorrelationIdInternal(ctx, execution)
                 println("despues de storeCorrelationId")
             }
+            executor.awaitTermination(1,TimeUnit.SECONDS)
 
 
             if (storeStages) {

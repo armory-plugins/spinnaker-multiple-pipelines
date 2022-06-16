@@ -21,6 +21,7 @@ import com.netflix.spinnaker.kork.plugins.api.spring.SpringLoaderPlugin;
 import com.netflix.spinnaker.orca.api.pipeline.graph.StageDefinitionBuilder;
 import com.netflix.spinnaker.orca.api.pipeline.graph.TaskNode;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
+import io.armory.plugin.smp.execution.MyExecutionLauncher;
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask;
 import javax.annotation.Nonnull;
 
@@ -72,7 +73,8 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
     public void registerBeanDefinitions(BeanDefinitionRegistry registry) {
         List<Pair<String, Class>> beanList =  Arrays.asList(
                 Pair.of("RunMultiplePipelinesStage", RunMultiplePipelinesStage.class),
-                Pair.of("RunMultiplePipelinesTask", RunMultiplePipelinesTask.class)
+                Pair.of("RunMultiplePipelinesTask", RunMultiplePipelinesTask.class),
+                Pair.of("MyExecutionLauncher", MyExecutionLauncher.class)
         );
         beanList.forEach( curr -> {
             BeanDefinition lazyLoadCredentialsRepositoryDefinition = primaryBeanDefinitionFor(curr.getRight());
