@@ -10,6 +10,7 @@ import com.netflix.spinnaker.orca.api.pipeline.persistence.ExecutionRepositoryLi
 import com.netflix.spinnaker.orca.interlink.Interlink
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository
 import org.jooq.DSLContext
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -41,5 +42,27 @@ open class MySqlConfiguration {
     ).let {
         InstrumentedProxy.proxy(registry, it, "sql.executions", mapOf(Pair("repository", "primary"))) as ExecutionRepository
     }
+
+    @ConditionalOnProperty("execution-repository.sql.enabled", "execution-repository.sql.secondary.enabled")
+    @Bean
+    @ExposeToApp
+    open fun secondarySqlExecutionRepository(
+        dsl: DSLContext,
+        mapper: ObjectMapper,
+        registry: Registry,
+        properties: SqlProperties,
+        orcaSqlProperties: OrcaSqlProperties,
+        @Value("\${execution-repository.sql.secondary.pool-name}") poolName: String
+    ) = ConcurrentSqlExecutionRepository(
+            orcaSqlProperties.partitionName,
+            dsl,
+            mapper,
+            properties.retries.transactions,
+            orcaSqlProperties.batchReadSize,
+            orcaSqlProperties.stageReadSize,
+            poolName
+        ).let {
+        InstrumentedProxy.proxy(registry, it, "sql.executions", mapOf(Pair("repository", "secondary"))) as ExecutionRepository
+        }
 
 }

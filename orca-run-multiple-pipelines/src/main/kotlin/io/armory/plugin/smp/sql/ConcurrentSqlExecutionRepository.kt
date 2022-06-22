@@ -802,11 +802,17 @@ class ConcurrentSqlExecutionRepository(
             }
 
             val executor = Executors.newSingleThreadExecutor()
-            executor.runCatching {
+            if ( execution.type == PIPELINE && execution.trigger.correlationId != null
+                && body.contains("\"runMultiplePipelines\"") ) {
+                executor.runCatching {
+                    storeCorrelationIdInternal(ctx, execution)
+                }
+                if (!executor.isTerminated) {
+                    executor.awaitTermination(1, TimeUnit.SECONDS)
+                }
+            } else {
                 storeCorrelationIdInternal(ctx, execution)
-                println("despues de storeCorrelationId")
             }
-            executor.awaitTermination(1,TimeUnit.SECONDS)
 
 
             if (storeStages) {

@@ -126,6 +126,13 @@ public class RunMultiplePipelinesTask implements Task {
             }
         }
 
+        if (pipelineExecutions.isEmpty())  {
+            return TaskResult
+                    .builder(ExecutionStatus.TERMINAL)
+                    .outputs(Collections.singletonMap("error", "Child Pipelines were not executed"))
+                    .build();
+        }
+
         return TaskResult
                 .builder(returnExecutionStatus)
                 .outputs(Collections.singletonMap("executionsList", pipelineExecutions))
