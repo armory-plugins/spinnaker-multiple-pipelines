@@ -34,9 +34,9 @@ import io.armory.plugin.smp.config.UtilityHelper;
 import io.armory.plugin.smp.parseyml.App;
 import io.armory.plugin.smp.parseyml.Apps;
 import lombok.SneakyThrows;
-import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -55,7 +55,7 @@ import java.util.Optional;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Extension
+@Component
 public class RunMultiplePipelinesTask implements Task {
 
     private final Front50Service front50Service;
@@ -124,6 +124,13 @@ public class RunMultiplePipelinesTask implements Task {
             if (pipelineExecutions.stream().anyMatch(p -> p.getStatus() == ExecutionStatus.TERMINAL)) {
                 doRollbacks(pipelineExecutions, stage, application);
             }
+        }
+
+        if (pipelineExecutions.isEmpty())  {
+            return TaskResult
+                    .builder(ExecutionStatus.TERMINAL)
+                    .outputs(Collections.singletonMap("error", "Child Pipelines were not executed"))
+                    .build();
         }
 
         return TaskResult

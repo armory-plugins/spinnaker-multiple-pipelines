@@ -16,19 +16,32 @@
 
 package io.armory.plugin.smp;
 
+import com.netflix.spinnaker.kork.plugins.api.spring.SpringLoader;
+import com.netflix.spinnaker.kork.plugins.api.spring.SpringLoaderPlugin;
 import com.netflix.spinnaker.orca.api.pipeline.graph.StageDefinitionBuilder;
 import com.netflix.spinnaker.orca.api.pipeline.graph.TaskNode;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
+import io.armory.plugin.smp.execution.MyExecutionLauncher;
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask;
 import javax.annotation.Nonnull;
 
-import org.pf4j.Extension;
-import org.pf4j.Plugin;
+import org.apache.commons.lang3.tuple.Pair;
 import org.pf4j.PluginWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanDefinitionStoreException;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.stereotype.Component;
 
-public class RunMultiplePipelinesPlugin extends Plugin {
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
+    private static final String ARMORY_IAM_SPRING_LOADER_BEAN_NAME = String.format("Armory.RunMultiplePipelines.%s", SpringLoader.class.getName());
+    private static final String SQL_CONFIGURATION_BEAN_NAME = "sqlConfiguration";
+
     private Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesPlugin.class);
     /**
      * Constructor to be used by plugin manager for plugin instantiation.
@@ -50,9 +63,39 @@ public class RunMultiplePipelinesPlugin extends Plugin {
     public void stop() {
         logger.info("Stopping RunMultiplePipelines plugin...");
     }
+
+    @Override
+    public List<String> getPackagesToScan() {
+        return Collections.singletonList("io.armory.plugin.smp");
+    }
+
+    @Override
+    public void registerBeanDefinitions(BeanDefinitionRegistry registry) {
+        List<Pair<String, Class>> beanList =  Arrays.asList(
+                Pair.of("RunMultiplePipelinesStage", RunMultiplePipelinesStage.class),
+                Pair.of("RunMultiplePipelinesTask", RunMultiplePipelinesTask.class),
+                Pair.of("MyExecutionLauncher", MyExecutionLauncher.class)
+        );
+        beanList.forEach( curr -> {
+            BeanDefinition lazyLoadCredentialsRepositoryDefinition = primaryBeanDefinitionFor(curr.getRight());
+            try {
+                registry.registerBeanDefinition(curr.getLeft(), lazyLoadCredentialsRepositoryDefinition);
+            } catch (BeanDefinitionStoreException e) {
+                log.error("Could not register bean {}", lazyLoadCredentialsRepositoryDefinition.getBeanClassName());
+                throw new RuntimeException(e);
+            }
+        });
+
+        super.registerBeanDefinitions(registry);
+
+        if (registry.containsBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)) {
+            registry.getBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)
+                    .setDependsOn(ARMORY_IAM_SPRING_LOADER_BEAN_NAME);
+        }
+    }
 }
 
-@Extension
+@Component
 class RunMultiplePipelinesStage implements StageDefinitionBuilder {
     @Override
     public void taskGraph(@Nonnull StageExecution stage, @Nonnull TaskNode.Builder builder) {
