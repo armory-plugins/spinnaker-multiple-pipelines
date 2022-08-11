@@ -121,7 +121,7 @@ public class MyExecutionLauncher extends ExecutionLauncher {
         }
     }
 
-    public PipelineExecution start(PipelineExecution execution) throws Exception {
+    public PipelineExecution start(PipelineExecution execution) {
         executionRunner.start(execution);
         return execution;
     }
