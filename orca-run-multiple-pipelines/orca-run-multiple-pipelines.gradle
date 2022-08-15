@@ -46,7 +46,7 @@ dependencies {
     compileOnly 'de.huxhorn.sulky:de.huxhorn.sulky.ulid'
     compileOnly 'io.reactivex:rxjava'
 
-    compileOnly(group: 'org.pf4j', name: 'pf4j')
+    compileOnly "org.pf4j:pf4j"
     compileOnly "io.spinnaker.kork:kork-plugins-api"
     compileOnly "io.spinnaker.kork:kork-plugins-spring-api"
     compileOnly "io.spinnaker.orca:orca-api"
@@ -66,9 +66,9 @@ dependencies {
     compileOnly "io.spinnaker.kork:kork-telemetry"
     compileOnly "io.spinnaker.kork:kork-sql"
 
-    compileOnly(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
-    annotationProcessor(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
-    annotationProcessor(group: 'org.pf4j', name: 'pf4j', version:  "${pf4jVersion}")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.pf4j:pf4j")
 
     testImplementation(platform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
     testImplementation "io.spinnaker.orca:orca-api"
