@@ -53,16 +53,16 @@ dependencies {
     compileOnly "io.spinnaker.orca:orca-front50"
     compileOnly "io.spinnaker.orca:orca-core"
     compileOnly "io.spinnaker.orca:orca-sql"
-    compileOnly "io.spinnaker.orca:orca-interlink:"
+    compileOnly "io.spinnaker.orca:orca-interlink"
 
     annotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
     testAnnotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
 
     compileOnly "io.spinnaker.kork:kork-web"
-    compileOnly "io.spinnaker.kork:kork-artifacts:"
-    compileOnly "io.spinnaker.kork:kork-expressions:"
+    compileOnly "io.spinnaker.kork:kork-artifacts"
+    compileOnly "io.spinnaker.kork:kork-expressions"
     compileOnly "io.spinnaker.kork:kork-moniker"
-    compileOnly "io.spinnaker.kork:kork-plugins:"
+    compileOnly "io.spinnaker.kork:kork-plugins"
     compileOnly "io.spinnaker.kork:kork-telemetry"
     compileOnly "io.spinnaker.kork:kork-sql"
 
