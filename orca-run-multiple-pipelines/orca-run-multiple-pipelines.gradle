@@ -40,47 +40,48 @@ spinnakerPlugin {
 }
 
 dependencies {
-    compileOnly 'com.google.code.gson:gson:2.9.0'
-    compileOnly 'de.huxhorn.sulky:de.huxhorn.sulky.ulid:8.2.0'
-    compileOnly 'io.reactivex:rxjava:1.3.8'
+    implementation(enforcedPlatform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
 
-    compileOnly(group: 'org.pf4j', name: 'pf4j', version: "${pf4jVersion}")
-    compileOnly "io.spinnaker.kork:kork-plugins-api:${korkVersion}"
-    compileOnly "io.spinnaker.kork:kork-plugins-spring-api:${korkVersion}"
-    compileOnly "io.spinnaker.orca:orca-api:${orcaVersion}"
-    compileOnly "io.spinnaker.orca:orca-front50:${orcaVersion}"
-    compileOnly "io.spinnaker.orca:orca-core:${orcaVersion}"
-    compileOnly "io.spinnaker.orca:orca-sql:${orcaVersion}"
-    compileOnly "io.spinnaker.orca:orca-interlink:${orcaVersion}"
+    compileOnly 'com.google.code.gson:gson'
+    compileOnly 'de.huxhorn.sulky:de.huxhorn.sulky.ulid'
+    compileOnly 'io.reactivex:rxjava'
 
-    compileOnly(platform("io.spinnaker.kork:kork-bom:${korkVersion}"))
-    annotationProcessor platform("io.spinnaker.kork:kork-bom:$korkVersion")
-    testAnnotationProcessor platform("io.spinnaker.kork:kork-bom:$korkVersion")
+    compileOnly "org.pf4j:pf4j"
+    compileOnly "io.spinnaker.kork:kork-plugins-api"
+    compileOnly "io.spinnaker.kork:kork-plugins-spring-api"
+    compileOnly "io.spinnaker.orca:orca-api"
+    compileOnly "io.spinnaker.orca:orca-front50"
+    compileOnly "io.spinnaker.orca:orca-core"
+    compileOnly "io.spinnaker.orca:orca-sql"
+    compileOnly "io.spinnaker.orca:orca-interlink"
 
-    compileOnly "io.spinnaker.kork:kork-web:${korkVersion}"
-    compileOnly "io.spinnaker.kork:kork-artifacts:${korkVersion}"
-    compileOnly "io.spinnaker.kork:kork-expressions:${korkVersion}"
-    compileOnly "io.spinnaker.kork:kork-moniker:${korkVersion}"
-    compileOnly "io.spinnaker.kork:kork-plugins:${korkVersion}"
-    compileOnly "io.spinnaker.kork:kork-telemetry:${korkVersion}"
+    annotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
+    testAnnotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
+
+    compileOnly "io.spinnaker.kork:kork-web"
+    compileOnly "io.spinnaker.kork:kork-artifacts"
+    compileOnly "io.spinnaker.kork:kork-expressions"
+    compileOnly "io.spinnaker.kork:kork-moniker"
+    compileOnly "io.spinnaker.kork:kork-plugins"
+    compileOnly "io.spinnaker.kork:kork-telemetry"
     compileOnly "io.spinnaker.kork:kork-sql"
 
-    compileOnly(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
-    annotationProcessor(group: 'org.projectlombok', name: 'lombok', version: '1.18.12')
-    annotationProcessor(group: 'org.pf4j', name: 'pf4j', version:  "${pf4jVersion}")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.pf4j:pf4j")
 
     testImplementation(platform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
     testImplementation "io.spinnaker.orca:orca-api"
     testImplementation "io.spinnaker.orca:orca-api-tck"
-    testImplementation "io.spinnaker.orca:orca-queue"
+    testImplementation "io.spinnaker.orca:orca-core"
     testImplementation "io.spinnaker.kork:kork-plugins-tck"
-    testImplementation "io.spinnaker.orca:orca-front50:${orcaVersion}"
+    testImplementation "io.spinnaker.orca:orca-front50"
 
-    testImplementation "dev.minutest:minutest:1.13.0"
+    testImplementation "dev.minutest:minutest"
 
-    testRuntime 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntime 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
-    testRuntime "org.junit.platform:junit-platform-commons:1.5.2"
+    testRuntime 'org.junit.jupiter:junit-jupiter-api'
+    testRuntime 'org.junit.jupiter:junit-jupiter-engine'
+    testRuntime "org.junit.platform:junit-platform-commons"
 }
 
 test {
