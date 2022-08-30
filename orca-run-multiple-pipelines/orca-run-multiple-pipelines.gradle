@@ -12,13 +12,6 @@ compileKotlin {
     }
 }
 
-compileTestKotlin {
-    kotlinOptions {
-        languageVersion = "1.4"
-        jvmTarget = "11"
-    }
-}
-
 repositories {
     mavenCentral()
     maven {
@@ -41,13 +34,13 @@ spinnakerPlugin {
 
 dependencies {
     implementation(enforcedPlatform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
+    implementation 'commons-io:commons-io'
 
     compileOnly 'com.google.code.gson:gson'
     compileOnly 'de.huxhorn.sulky:de.huxhorn.sulky.ulid'
     compileOnly 'io.reactivex:rxjava'
 
     compileOnly "org.pf4j:pf4j"
-    compileOnly "io.spinnaker.kork:kork-plugins-api"
     compileOnly "io.spinnaker.kork:kork-plugins-spring-api"
     compileOnly "io.spinnaker.orca:orca-api"
     compileOnly "io.spinnaker.orca:orca-front50"
@@ -66,24 +59,24 @@ dependencies {
     compileOnly "io.spinnaker.kork:kork-telemetry"
     compileOnly "io.spinnaker.kork:kork-sql"
 
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
-    annotationProcessor("org.pf4j:pf4j")
+    compileOnly "org.projectlombok:lombok"
+    annotationProcessor "org.projectlombok:lombok"
+    annotationProcessor "org.pf4j:pf4j"
+    testAnnotationProcessor "org.projectlombok:lombok"
 
-    testImplementation(platform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
-    testImplementation "io.spinnaker.orca:orca-api"
-    testImplementation "io.spinnaker.orca:orca-api-tck"
-    testImplementation "io.spinnaker.orca:orca-core"
-    testImplementation "io.spinnaker.kork:kork-plugins-tck"
-    testImplementation "io.spinnaker.orca:orca-front50"
+    testImplementation group: 'io.spinnaker.orca', name: 'orca-api'
+    testImplementation group: 'io.spinnaker.orca', name: 'orca-api-tck'
+    testImplementation group: 'io.spinnaker.orca', name: 'orca-queue'
+    testImplementation group: 'io.spinnaker.orca', name: 'orca-front50'
+    testImplementation group: 'io.spinnaker.kork', name: 'kork-plugins-tck'
 
-    testImplementation "dev.minutest:minutest"
+    testCompile group: 'org.projectlombok', name: 'lombok'
 
-    testRuntime 'org.junit.jupiter:junit-jupiter-api'
     testRuntime 'org.junit.jupiter:junit-jupiter-engine'
     testRuntime "org.junit.platform:junit-platform-commons"
+    testRuntime "org.junit.platform:junit-platform-launcher"
 }
 
-test {
+tasks.withType(Test) {
     useJUnitPlatform()
 }
