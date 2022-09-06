@@ -1,7 +1,8 @@
+import { UISref } from '@uirouter/react';
 import React, { useState } from 'react';
 
-import { duration, ExecutionDetailsSection, IExecution, IExecutionDetailsSectionProps,
-        timestamp, Tooltip } from '@spinnaker/core';
+import type { IExecutionDetailsSectionProps} from '@spinnaker/core';
+import { duration, ExecutionDetailsSection, IExecution, StageFailureMessage, timestamp, Tooltip } from '@spinnaker/core';
 
 import CancelAllModal from './modals/CancelAllModal';
 import CancelModal from './modals/CancelModal';
@@ -89,8 +90,13 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
 
   function findIfExecutionListCreatedArtifacts(executions:any) {
     for (const execution of executions) {
-        const deployStage = execution.stages.find(function(stage: any) {
-            return stage.name == "Deploy";
+        const result = execution.stages.filter(function(stage: any) {
+            return stage.name.startsWith("Deploy");
+        });
+        const deployStage = result.find(function(stage: any) {
+            if (stage.outputs["artifacts"] != undefined) {
+                return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
+            }
         });
         if (deployStage != undefined) {
             if (deployStage.outputs["outputs.createdArtifacts"] != undefined) {
@@ -99,6 +105,23 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
         }
     }
     return false;
+  }
+
+  function findIfIndividualExecutionCreatedArtifacts(execution:any) {
+      const result = execution.stages.filter(function(stage: any) {
+          return stage.name.startsWith("Deploy");
+      });
+      const deployStage = result.find(function(stage: any) {
+          if (stage.outputs["artifacts"] != undefined) {
+              return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
+          }
+      });
+      if (deployStage != undefined) {
+          if (deployStage.outputs["outputs.createdArtifacts"] != undefined) {
+              return true;
+          }
+      }
+      return false;
   }
 
   function checkTerminalStatus(executions:any) {
@@ -112,6 +135,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
 
     return (
       <ExecutionDetailsSection name={props.name} current={props.current}>
+      <StageFailureMessage stage={stage} message={stage.failureMessage} />
        <table className="table" style={{marginBottom: "0px"}}>
          <thead>
              <tr>
@@ -127,9 +151,22 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
        <>
         {Array.from(executionsSet).map((execution: any, index: any) => {
             return (
-             <tr className="clickable ng-scope info" analytics-on="click" analytics-category="Pipeline" key={execution.id}>
+             <tr className="ng-scope info" analytics-on="click" analytics-category="Pipeline" key={execution.id}>
                  {execution.name != "rollbackOnFailure" &&
-                    <td>{execution.trigger.parameters.app}</td>
+                    <td>
+                       <UISref
+                              key={execution.id}
+                              to="home.applications.application.pipelines.executionDetails.execution"
+                              params={{
+                                application: execution.application,
+                                executionId: execution.id,
+                                executionParams: { application: application.name, executionId: execution.id },
+                              }}
+                              options={{ inherit: false, reload: 'home.applications.application.pipelines.executionDetails' }}
+                            >
+                               <a>{execution.trigger.parameters.app}</a>
+                            </UISref>{' '}
+                    </td>
                  }
                  {execution.name == "rollbackOnFailure" &&
                     <td>Rollback of {execution.stages[0].context.manifestName}</td>
@@ -150,16 +187,26 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
        </>
        )}
          {props.stage.outputs.executionsList.map((execution: any, index: any) => {
-            const deployStage = execution.stages.find(function(stage: any) {
-                return stage.name == "Deploy";
-            });
             return (
-             <tr className="clickable ng-scope info" analytics-on="click" analytics-category="Pipeline" key={execution.id}>
-                 <td>{execution.trigger.parameters.app}</td>
+             <tr className="ng-scope info" analytics-on="click" analytics-category="Pipeline" key={execution.id}>
+                 <td>
+                    <UISref
+                      key={execution.id}
+                      to="home.applications.application.pipelines.executionDetails.execution"
+                      params={{
+                        application: execution.application,
+                        executionId: execution.id,
+                        executionParams: { application: application.name, executionId: execution.id },
+                      }}
+                      options={{ inherit: false, reload: 'home.applications.application.pipelines.executionDetails' }}
+                    >
+                       <a>{execution.trigger.parameters.app}</a>
+                    </UISref>{' '}
+                 </td>
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>
                  <td className="ng-binding">{duration(execution.endTime-execution.startTime)}</td>
                  <td><span className={"label label-default label-" + execution.status.toLowerCase()}>{execution.status}</span></td>
-                 {deployStage != undefined && deployStage.outputs["outputs.createdArtifacts"] != undefined &&
+                 {findIfIndividualExecutionCreatedArtifacts(execution) &&
                     <td><Tooltip value="Rollback deploy">
                         <button className="link" onClick={handleRollbackClick(execution)}>
                             <i className="glyphicon glyphicon-backward"/>
@@ -200,7 +247,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
             <p>Triggering rollbacks on failure..</p>
         </div>
        }
-       {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure != undefined && props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true 
+       {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure != undefined && props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true
        && props.stage.outputs.executionsList.length > 0 && checkTerminalStatus(props.stage.outputs.executionsList) &&
         <div>
             <p>All rollbacks already triggered</p>

@@ -3,6 +3,17 @@ plugins {
     id 'maven-publish'
     id "io.spinnaker.plugin.service-extension"
     id "kotlin"
+    id "groovy"
+}
+
+compileGroovy {
+    sourceCompatibility = "11"
+}
+sourceSets {
+    main {
+        java { srcDirs = [] }    // no source dirs for the java compiler
+        groovy { srcDirs = ["src/main/java", "src/main/groovy"] }  // compile   everything in src/ with groovy
+    }
 }
 
 compileKotlin {
@@ -47,6 +58,8 @@ dependencies {
     compileOnly "io.spinnaker.orca:orca-core"
     compileOnly "io.spinnaker.orca:orca-sql"
     compileOnly "io.spinnaker.orca:orca-interlink"
+    compileOnly "org.codehaus.groovy:groovy-all"
+    compileOnly "org.codehaus.groovy:groovy"
 
     annotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
     testAnnotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
@@ -72,9 +85,9 @@ dependencies {
 
     testCompile group: 'org.projectlombok', name: 'lombok'
 
+    testRuntime 'org.junit.jupiter:junit-jupiter-api'
     testRuntime 'org.junit.jupiter:junit-jupiter-engine'
     testRuntime "org.junit.platform:junit-platform-commons"
-    testRuntime "org.junit.platform:junit-platform-launcher"
 }
 
 tasks.withType(Test) {

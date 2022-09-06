@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
-import { IPipeline, IStage, PipelineConfigService } from '@spinnaker/core';
+import type { IPipeline, IStage} from '@spinnaker/core';
+import { PipelineConfigService } from '@spinnaker/core';
 
 declare global {
   interface Window {
@@ -27,9 +28,18 @@ function RollbackModal(props: any) {
     }, [error, autoCloseModal]);
 
     (async function() {
-        const deployStage = props.executionData.stages.find(function(stage: any) {
-            return stage.name == "Deploy";
-        });
+        const deployStage = (() => {
+              const result = props.executionData.stages.filter(function(stage: any) {
+                  return stage.name.startsWith("Deploy");
+              });
+              const foundStage = result.find(function(stage: any) {
+                  if (stage.outputs["artifacts"] != undefined) {
+                      return stage.outputs["artifacts"].find( ar => ar.name.includes(props.executionData.trigger.parameters.app));
+                  }
+              });
+            return foundStage;
+        })();
+
         if (deployStage.outputs["outputs.createdArtifacts"] === undefined) {
             if (error === "") {
                 setError("Can't perform rollback this pipeline did not create an artifact");

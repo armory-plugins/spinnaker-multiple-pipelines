@@ -16,16 +16,17 @@
 
 package io.armory.plugin.smp.tasks;
 
-import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
-import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionNotFoundException;
-import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
+import com.netflix.spinnaker.orca.jackson.OrcaObjectMapper;
 import com.netflix.spinnaker.security.AuthenticatedRequest;
 import io.armory.plugin.smp.parseyml.App;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
@@ -33,46 +34,45 @@ import java.util.Optional;
 @Getter
 public class TriggerInOrder implements Runnable{
 
+    private final Logger logger = LoggerFactory.getLogger(TriggerInOrder.class);
+
     private final Map<String, Object> pipelineConfigCopy;
     private final StageExecution stage;
     private final App app;
     private final DependentPipelineStarter dependentPipelineStarter;
-    private final ExecutionRepository executionRepository;
     private PipelineExecution pipelineExecution;
 
-    public TriggerInOrder(Map<String, Object> pipelineConfigCopy, StageExecution stage, App app, DependentPipelineStarter dependentPipelineStarter, ExecutionRepository executionRepository) {
+    public TriggerInOrder(Map<String, Object> pipelineConfigCopy, StageExecution stage, App app, DependentPipelineStarter dependentPipelineStarter) {
         this.pipelineConfigCopy = pipelineConfigCopy;
         this.stage = stage;
         this.app = app;
         this.dependentPipelineStarter = dependentPipelineStarter;
-        this.executionRepository = executionRepository;
     }
 
     @SneakyThrows
     @Override
     public void run() {
-        PipelineExecution pipelineExecution = dependentPipelineStarter.trigger(
-                pipelineConfigCopy,
-                stage.getExecution().getAuthentication().getUser(),
-                stage.getExecution(),
-                app.getArguments(),
-                stage.getId(),
-                getUser(stage.getExecution())
-        );
-        while (true) {
-                try {
-                    PipelineExecution pipelineExecutionUpdated = executionRepository.retrieve(ExecutionType.PIPELINE, pipelineExecution.getId());
-                    if (pipelineExecutionUpdated.getStatus().isComplete()) {
-                        this.pipelineExecution = pipelineExecutionUpdated;
-                        break;
-                    }
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (ExecutionNotFoundException e) {
-                    e.printStackTrace();
-                }
-            }
+        ObjectMapper objectOrcaMapper = OrcaObjectMapper.getInstance();
+        PipelineExecution pipelineExecutionCopy = objectOrcaMapper.readValue(objectOrcaMapper.writeValueAsString(stage.getExecution()), PipelineExecution.class);
+        pipelineExecutionCopy.getStages().clear();
+        pipelineExecutionCopy.getStages().add(stage.getExecution().getStages().stream()
+                .filter(s -> s.getId().equals(stage.getId())).findFirst().get());
+        try {
+            this.pipelineExecution = dependentPipelineStarter.trigger(
+                    pipelineConfigCopy,
+                    stage.getExecution().getAuthentication().getUser(),
+                    pipelineExecutionCopy,
+                    app.getArguments(),
+                    stage.getId(),
+                    getUser(stage.getExecution())
+            );
+        } catch (Throwable e) {
+            logger.error("Entering try catch message {} ", e.getMessage());
+            stage.appendErrorMessage(e.getMessage());
+            stage.getOutputs().put("failureMessage", e.getMessage());
+            return;
+        }
+        logger.info("Execution status of child pipeline " + app.getArguments().get("app") + " : {}", pipelineExecution.getStatus());
     }
 
     private PipelineExecution.AuthenticationDetails getUser(PipelineExecution parentPipeline) {

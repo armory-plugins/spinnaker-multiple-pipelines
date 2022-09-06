@@ -30,11 +30,7 @@ function CancelModal(props: any) {
                 //it always goes to catch even when cancel its executed correctly
         });
 
-        //wait 2.5 sec for response
-        await new Promise(f => setTimeout(f, 2500));
-        if (cancelExecution["$$state"].status === 0) {
-            setError("This pipeline already completed its execution");
-        }
+        await new Promise(f => setTimeout(f, 1000));
         setAutoCloseModal(true);
     }
 

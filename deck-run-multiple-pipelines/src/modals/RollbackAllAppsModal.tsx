@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
-import { IPipeline, IStage, PipelineConfigService } from '@spinnaker/core';
+import type { IPipeline, IStage} from '@spinnaker/core';
+import { PipelineConfigService } from '@spinnaker/core';
 
 declare global {
   interface Window {
@@ -45,9 +46,15 @@ function RollbackAllAppsModal(props: any) {
         setLoading("block");
         setDisabled(true);
         for (const execution of props.allExecutions) {
-            const deployStage = execution.stages.find(function(stage: any) {
-                return stage.name == "Deploy";
+            const result = execution.stages.filter(function(stage: any) {
+                return stage.name.startsWith("Deploy");
             });
+            const foundStage = result.find(function(stage: any) {
+                if (stage.outputs["artifacts"] != undefined) {
+                    return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
+                }
+            });
+            const deployStage = foundStage;
 
         account = deployStage.context["deploy.account.name"];
         manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;

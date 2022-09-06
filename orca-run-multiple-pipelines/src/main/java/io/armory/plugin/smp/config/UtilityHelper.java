@@ -109,5 +109,4 @@ public class UtilityHelper {
         return result;
     }
 
-
 }

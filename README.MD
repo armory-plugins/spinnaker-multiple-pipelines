@@ -1,4 +1,17 @@
 RunMultiplePipelines plugin adds a new custom stage to Spinnaker to trigger multiple child pipelines based on a yaml config.
+
+### Version Compatibility
+Minimum tested version is 2.26.x
+
+| Plugin  | Spinnaker Platform |
+|:------------- | :--------- |
+| 1.0.2 <= |  2.27.x |
+| 1.0.3 <= |  2.27.x |
+
+NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
+
+Check [release notes](https://github.com/armory/spinnaker-multiple-pipelines#release-notes) for more info
+
 # Installation & Configuration
 Note: alternative you can consume the plugin using this example patch as well. [example](https://github.com/armory/multiple-pipelines-plugin-releases/blob/main/plugins/custom/patch-plugin-multiple-pipelines-2.yml)
 1. Identify the released version of the RunMultiplePipelines plugin you wish to install. Official releases are found [here](https://github.com/armory/multiple-pipelines-plugin-releases).
@@ -89,6 +102,10 @@ bundle_web:
 - The child_pipeline name needs to exist on the same spinnaker application
 - The Deploy (manifest) stage you wish to rollback in your child_pipeline has to be renamed "Deploy"
 - For rollback_onfailure or manual rollbacks to work you need to create a pipeline with the name rollbackOnFailure in the same application
+
+### release notes
+- Version 1.0.2 only supports concurrent executions using Redis
+- Version 1.0.3 supports concurrent executions using SQL database
 
 # Spinnaker Multiple Pipelines plugin development
 
