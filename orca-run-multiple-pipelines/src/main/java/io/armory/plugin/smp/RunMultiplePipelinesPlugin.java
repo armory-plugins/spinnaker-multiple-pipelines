@@ -22,6 +22,8 @@ import com.netflix.spinnaker.orca.api.pipeline.graph.StageDefinitionBuilder;
 import com.netflix.spinnaker.orca.api.pipeline.graph.TaskNode;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import io.armory.plugin.smp.execution.MyExecutionLauncher;
+import io.armory.plugin.smp.tasks.MonitorMultiplePipelinesTask;
+import io.armory.plugin.smp.tasks.ParsePipelinesYamlTask;
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask;
 import javax.annotation.Nonnull;
 
@@ -74,6 +76,8 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
         List<Pair<String, Class>> beanList =  Arrays.asList(
                 Pair.of("RunMultiplePipelinesStage", RunMultiplePipelinesStage.class),
                 Pair.of("RunMultiplePipelinesTask", RunMultiplePipelinesTask.class),
+                Pair.of("ParsePipelinesYamlTask", ParsePipelinesYamlTask.class),
+                Pair.of("MonitorMultiplePipelinesTask", MonitorMultiplePipelinesTask.class),
                 Pair.of("MyExecutionLauncher", MyExecutionLauncher.class)
         );
         beanList.forEach( curr -> {
@@ -97,8 +101,14 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
 
 @Component
 class RunMultiplePipelinesStage implements StageDefinitionBuilder {
+
+    private Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesStage.class);
+
     @Override
     public void taskGraph(@Nonnull StageExecution stage, @Nonnull TaskNode.Builder builder) {
+        builder.withTask("parsePipelinesYamlTask", ParsePipelinesYamlTask.class);
         builder.withTask("runMultiplePipelines", RunMultiplePipelinesTask.class);
+        builder.withTask("monitorMultiplePipelinesTask", MonitorMultiplePipelinesTask.class);
     }
+
 }

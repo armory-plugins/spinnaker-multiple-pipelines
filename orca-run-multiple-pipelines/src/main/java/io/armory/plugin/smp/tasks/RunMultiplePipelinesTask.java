@@ -16,7 +16,6 @@
 
 package io.armory.plugin.smp.tasks;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
@@ -26,14 +25,13 @@ import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
 import com.netflix.spinnaker.orca.front50.Front50Service;
-import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
-import io.armory.plugin.smp.config.RunMultiplePipelinesContext;
+
 import javax.annotation.Nonnull;
 
-import io.armory.plugin.smp.config.UtilityHelper;
 import io.armory.plugin.smp.parseyml.App;
 import io.armory.plugin.smp.parseyml.Apps;
 import lombok.SneakyThrows;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -45,8 +43,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.Arrays;;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -58,16 +55,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class RunMultiplePipelinesTask implements Task {
 
+    static List<PipelineExecution> PIPELINES_EXECUTIONS;
+    static List<String> PIPELINES_EXECUTIONSIDS;
+
     private final Front50Service front50Service;
     private final DependentPipelineStarter dependentPipelineStarter;
-    private final ExecutionRepository executionRepository;
 
-    public RunMultiplePipelinesTask(Optional<Front50Service> front50Service,
-                                    DependentPipelineStarter dependentPipelineStarter,
-                                    ExecutionRepository executionRepository)  {
+    public RunMultiplePipelinesTask( Optional<Front50Service> front50Service,
+                                     DependentPipelineStarter dependentPipelineStarter)  {
         this.front50Service = front50Service.orElse(null);
         this.dependentPipelineStarter = dependentPipelineStarter;
-        this.executionRepository = executionRepository;
     }
 
     private final Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesTask.class);
@@ -76,22 +73,19 @@ public class RunMultiplePipelinesTask implements Task {
     @Nonnull
     @Override
     public TaskResult execute(@Nonnull StageExecution stage) {
-        RunMultiplePipelinesContext context = stage.mapTo(RunMultiplePipelinesContext.class);
         Gson gson = new Gson();
-        ObjectMapper mapper = new ObjectMapper();
-        UtilityHelper utilityHelper = new UtilityHelper();
-
-        Apps apps = utilityHelper.getApps(context, gson, mapper);
-
-        Map<String, Stack<App>> newTry = utilityHelper.tryWithStack(apps, mapper, gson);
+        Apps apps = ParsePipelinesYamlTask.getApps();
+        Map<String, Stack<App>> stackApps = ParsePipelinesYamlTask.getStackApps();
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
         if (front50Service == null) {
+            logger.error("Front50Service not enable error");
             throw new UnsupportedOperationException("Cannot start a stored pipeline, front50 is not enabled. Fix this by setting front50.enabled: true");
         }
 
         List<Map<String, Object>> pipelines = front50Service.getPipelines(application, false);
         List<PipelineExecution> pipelineExecutions = new LinkedList<>();
+        List<String> pipelineExecutionsIds = new ArrayList<>();
         ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
         //create a linked list of Threads to join on main thread
@@ -99,11 +93,12 @@ public class RunMultiplePipelinesTask implements Task {
 
         //trigger pipelines in different Threads
         AtomicBoolean statusTerminal = new AtomicBoolean(false);
-        for (Stack<App> stack : newTry.values()) {
+        for (Stack<App> stack : stackApps.values()) {
             Runnable triggerThis = () -> triggerThread(stack, gson, stage, pipelines, pipelineExecutions, statusTerminal);
             threadList.add(new Thread(triggerThis));
         }
 
+        logger.info("Starting " + threadList.size() +  " Threads...");
         threadList.forEach(Thread::start);
 
         threadList.forEach(t -> {
@@ -113,10 +108,10 @@ public class RunMultiplePipelinesTask implements Task {
                 e.printStackTrace();
             }
         });
+        logger.info("Finished calling trigger");
 
-        if (pipelineExecutions.stream().anyMatch(p -> p.getStatus() != ExecutionStatus.SUCCEEDED)) {
-            returnExecutionStatus = pipelineExecutions.stream().map(PipelineExecution::getStatus).filter(status -> status != ExecutionStatus.SUCCEEDED).findFirst().get();
-        }
+        pipelineExecutions.forEach(p -> pipelineExecutionsIds.add(p.getId()));
+
 
         //if rollback property is true and a pipeline gets terminal rollbacks will be executed for
         //completed success pipelines and Terminal pipelines with artifacts created
@@ -126,17 +121,37 @@ public class RunMultiplePipelinesTask implements Task {
             }
         }
 
+        if (ObjectUtils.isNotEmpty(stage.getOutputs().get("failureMessage"))) {
+            if(pipelineExecutions.isEmpty()) {
+                return TaskResult
+                        .builder(ExecutionStatus.TERMINAL)
+                        .build();
+            }
+        }
+
         if (pipelineExecutions.isEmpty())  {
+            logger.warn("pipelineExecutions list is empty... couldn't trigger any child pipelines");
+            stage.appendErrorMessage("Child Pipelines were not executed");
             return TaskResult
                     .builder(ExecutionStatus.TERMINAL)
-                    .outputs(Collections.singletonMap("error", "Child Pipelines were not executed"))
                     .build();
         }
 
+        logger.info("Returning TaskResult everything worked correctly");
+        PIPELINES_EXECUTIONS = pipelineExecutions;
+        PIPELINES_EXECUTIONSIDS = pipelineExecutionsIds;
+        stage.getContext().put("executionIds", pipelineExecutionsIds);
         return TaskResult
                 .builder(returnExecutionStatus)
-                .outputs(Collections.singletonMap("executionsList", pipelineExecutions))
                 .build();
+    }
+
+    public static List<PipelineExecution> getPipelinesExecutions() {
+        return PIPELINES_EXECUTIONS;
+    }
+
+    public static List<String> getPipelinesExecutionsids() {
+        return PIPELINES_EXECUTIONSIDS;
     }
 
     //this will get executed if the triggered pipelines created Artifacts in a stage named Deploy Baseline
@@ -215,6 +230,7 @@ public class RunMultiplePipelinesTask implements Task {
         while (stack.size() > i && !statusTerminal.get()) {
             App app = stack.pop();
             Map<String, Object> pipelineConfig = pipelines.stream().filter(pipeline -> pipeline.get("name").equals(app.getChildPipeline())).findFirst().orElse(null);
+            logger.info("Getting pipelineConfig of childPipeline: " + pipelineConfig.get("name"));
             String jsonString = gson.toJson(pipelineConfig);
             Type type = new TypeToken<HashMap<String, Object>>() {}.getType();
             Map<String, Object> pipelineConfigCopy = gson.fromJson(jsonString, type);
@@ -222,11 +238,11 @@ public class RunMultiplePipelinesTask implements Task {
                     pipelineConfigCopy,
                     stage,
                     app,
-                    dependentPipelineStarter,
-                    executionRepository);
+                    dependentPipelineStarter);
             triggerInOrder.run();
             if (!pipelineExecutions.stream().anyMatch(p -> p.getTrigger().getParameters().get("app").equals(
                     triggerInOrder.getPipelineExecution().getTrigger().getParameters().get("app")))) {
+                logger.info("Adding child pipeline execution to pipelineExecutions list... {}", triggerInOrder.getPipelineExecution());
                 pipelineExecutions.add(triggerInOrder.getPipelineExecution());
             }
             if (triggerInOrder.getPipelineExecution().getStatus() != ExecutionStatus.SUCCEEDED) {
@@ -237,6 +253,6 @@ public class RunMultiplePipelinesTask implements Task {
                 break;
             }
         }
+        logger.info("TriggerThread method completed pipelineExecutions list size is " + pipelineExecutions.size());
     }
-
 }
