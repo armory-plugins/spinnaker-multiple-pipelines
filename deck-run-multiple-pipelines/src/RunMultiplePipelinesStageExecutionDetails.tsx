@@ -1,8 +1,8 @@
 import { UISref } from '@uirouter/react';
 import React, { useState } from 'react';
 
-import type { IExecutionDetailsSectionProps} from '@spinnaker/core';
-import { duration, ExecutionDetailsSection, IExecution, StageFailureMessage, timestamp, Tooltip } from '@spinnaker/core';
+import type { IExecutionDetailsSectionProps } from '@spinnaker/core';
+import { duration, ExecutionDetailsSection, StageFailureMessage, timestamp, Tooltip } from '@spinnaker/core';
 
 import CancelAllModal from './modals/CancelAllModal';
 import CancelModal from './modals/CancelModal';

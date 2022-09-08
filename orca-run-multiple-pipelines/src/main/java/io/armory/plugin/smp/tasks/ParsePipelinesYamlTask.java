@@ -36,6 +36,8 @@ public class ParsePipelinesYamlTask implements Task {
         ObjectMapper mapper = new ObjectMapper();
         UtilityHelper utilityHelper = new UtilityHelper();
 
+        //TODO: evaluate RunMultiplePipelinesContext.yamlConfig return TERMINAL and appropriate error message
+
         APPS = utilityHelper.getApps(context, gson, mapper);
 
         STACK_APPS = utilityHelper.tryWithStack(APPS, mapper, gson);
