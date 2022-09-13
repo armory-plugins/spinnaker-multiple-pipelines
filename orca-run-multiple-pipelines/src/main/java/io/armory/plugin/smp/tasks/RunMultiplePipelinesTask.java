@@ -16,6 +16,8 @@
 
 package io.armory.plugin.smp.tasks;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
@@ -55,16 +57,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class RunMultiplePipelinesTask implements Task {
 
-    static List<PipelineExecution> PIPELINES_EXECUTIONS;
-    static List<String> PIPELINES_EXECUTIONSIDS;
-
     private final Front50Service front50Service;
     private final DependentPipelineStarter dependentPipelineStarter;
+    private final ObjectMapper objectMapper;
 
-    public RunMultiplePipelinesTask( Optional<Front50Service> front50Service,
-                                     DependentPipelineStarter dependentPipelineStarter)  {
+    public RunMultiplePipelinesTask(Optional<Front50Service> front50Service,
+                                    DependentPipelineStarter dependentPipelineStarter, ObjectMapper objectMapper)  {
         this.front50Service = front50Service.orElse(null);
         this.dependentPipelineStarter = dependentPipelineStarter;
+        this.objectMapper = objectMapper;
     }
 
     private final Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesTask.class);
@@ -74,8 +75,8 @@ public class RunMultiplePipelinesTask implements Task {
     @Override
     public TaskResult execute(@Nonnull StageExecution stage) {
         Gson gson = new Gson();
-        Apps apps = ParsePipelinesYamlTask.getApps();
-        Map<String, Stack<App>> stackApps = ParsePipelinesYamlTask.getStackApps();
+        Apps apps = objectMapper.readValue(objectMapper.writeValueAsString(stage.getContext().get("apps")), Apps.class);
+        Map<String, Stack<App>> stackApps = objectMapper.readValue(objectMapper.writeValueAsString(stage.getContext().get("stack_apps")), new TypeReference<>() {});
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
         if (front50Service == null) {
@@ -138,20 +139,12 @@ public class RunMultiplePipelinesTask implements Task {
         }
 
         logger.info("Returning TaskResult everything worked correctly");
-        PIPELINES_EXECUTIONS = pipelineExecutions;
-        PIPELINES_EXECUTIONSIDS = pipelineExecutionsIds;
         stage.getContext().put("executionIds", pipelineExecutionsIds);
+        stage.getContext().put("executions", pipelineExecutions);
         return TaskResult
                 .builder(returnExecutionStatus)
+                .context(stage.getContext())
                 .build();
-    }
-
-    public static List<PipelineExecution> getPipelinesExecutions() {
-        return PIPELINES_EXECUTIONS;
-    }
-
-    public static List<String> getPipelinesExecutionsids() {
-        return PIPELINES_EXECUTIONSIDS;
     }
 
     //this will get executed if the triggered pipelines created Artifacts in a stage named Deploy Baseline
@@ -240,11 +233,13 @@ public class RunMultiplePipelinesTask implements Task {
                     app,
                     dependentPipelineStarter);
             triggerInOrder.run();
-            if (!pipelineExecutions.stream().anyMatch(p -> p.getTrigger().getParameters().get("app").equals(
-                    triggerInOrder.getPipelineExecution().getTrigger().getParameters().get("app")))) {
-                logger.info("Adding child pipeline execution to pipelineExecutions list... {}", triggerInOrder.getPipelineExecution());
-                pipelineExecutions.add(triggerInOrder.getPipelineExecution());
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
+            logger.info("Adding child pipeline execution to pipelineExecutions list... {}", triggerInOrder.getPipelineExecution());
+            pipelineExecutions.add(triggerInOrder.getPipelineExecution());
             if (triggerInOrder.getPipelineExecution().getStatus() != ExecutionStatus.SUCCEEDED) {
                 if (triggerInOrder.getPipelineExecution().getStatus() == ExecutionStatus.TERMINAL) {
                     statusTerminal.set(true);

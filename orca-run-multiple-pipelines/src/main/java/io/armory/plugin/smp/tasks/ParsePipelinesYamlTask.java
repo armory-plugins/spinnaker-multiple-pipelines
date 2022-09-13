@@ -23,9 +23,11 @@ import java.util.Stack;
 public class ParsePipelinesYamlTask implements Task {
 
     private final Logger logger = LoggerFactory.getLogger(ParsePipelinesYamlTask.class);
+    private final ObjectMapper objectMapper;
 
-    static Apps APPS;
-    static Map<String, Stack<App>> STACK_APPS;
+    public ParsePipelinesYamlTask(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @SneakyThrows
     @Nonnull
@@ -33,26 +35,21 @@ public class ParsePipelinesYamlTask implements Task {
     public TaskResult execute(@Nonnull StageExecution stage) {
         RunMultiplePipelinesContext context = stage.mapTo(RunMultiplePipelinesContext.class);
         Gson gson = new Gson();
-        ObjectMapper mapper = new ObjectMapper();
         UtilityHelper utilityHelper = new UtilityHelper();
 
         //TODO: evaluate RunMultiplePipelinesContext.yamlConfig return TERMINAL and appropriate error message
 
-        APPS = utilityHelper.getApps(context, gson, mapper);
+        Apps apps = utilityHelper.getApps(context, gson, objectMapper);
 
-        STACK_APPS = utilityHelper.tryWithStack(APPS, mapper, gson);
-        logger.info("Map of apps, detected returning success " + STACK_APPS.size() + " size");
+        Map<String, Stack<App>> stack_apps = utilityHelper.tryWithStack(apps, objectMapper, gson);
+        logger.info("Map of apps, detected returning success " + stack_apps.size() + " size");
+        stage.getContext().put("apps", apps);
+        stage.getContext().put("stack_apps", stack_apps);
 
         return TaskResult
                 .builder(ExecutionStatus.SUCCEEDED)
+                .context(stage.getContext())
                 .build();
     }
 
-    public static Apps getApps() {
-        return APPS;
-    }
-
-    public static Map<String, Stack<App>> getStackApps() {
-        return STACK_APPS;
-    }
 }
