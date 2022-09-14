@@ -20,7 +20,7 @@ import static com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType.PIPEL
 /**
  * This is a copy of <a href="https://github.com/spinnaker/orca/blob/b9077fb8187f6fb9612681b528bd760ef50e4534/orca-front50/src/main/groovy/com/netflix/spinnaker/orca/front50/tasks/MonitorPipelineTask.groovy">MonitorPipelineTask</a>
  * <p> changes -> pass this condition (stage.type == MonitorPipelineStage.PIPELINE_CONFIG_TYPE) </p>
- * <p> get and update RunMultiplePipelinesTask.getPipelinesExecutionsids() list to refer to it in outputs </p>
+ * <p> get and update PipelinesExecutions list to refer to it in outputs </p>
  */
 @Component
 class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
@@ -42,7 +42,6 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
     @Override
     TaskResult execute(StageExecution stage) {
         stage.getContext().put("monitorBehavior", MonitorPipelineStage.MonitorBehavior.WaitForAllToComplete)
-        stage.getContext().put("executionIds", RunMultiplePipelinesTask.getPipelinesExecutionsids())
         List<String> pipelineIds
         boolean isLegacyStage = false
         MonitorPipelineStage.StageParameters stageData = stage.mapTo(MonitorPipelineStage.StageParameters.class)
@@ -55,15 +54,12 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         }
 
         HashMap<String, MonitorPipelineStage.ChildPipelineStatusDetails> pipelineStatuses = new HashMap<>(pipelineIds.size())
+        List<PipelineExecution> pipelineExecutionsOutput = new ArrayList<>()
         PipelineExecution firstPipeline
 
-        pipelineIds.forEach { pipelineId ->
+        for (String pipelineId : pipelineIds) {
             PipelineExecution childPipeline = executionRepository.retrieve(PIPELINE, pipelineId)
-            if (RunMultiplePipelinesTask.getPipelinesExecutions().stream().filter({
-                p -> (p.getId() == pipelineId) }).findAny().isPresent()) {
-                RunMultiplePipelinesTask.getPipelinesExecutions().removeIf({ p -> (p.getId() == pipelineId) })
-                RunMultiplePipelinesTask.getPipelinesExecutions().add(childPipeline)
-            }
+            pipelineExecutionsOutput.add(childPipeline)
             if (firstPipeline == null) {
                 // Capture the first pipeline, since if there is only one, we will return its context as part of TaskResult
                 firstPipeline = childPipeline
@@ -123,6 +119,7 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         } else {
             result.executionStatuses = pipelineStatuses
         }
+        List<PipelineExecution> pipelineExecutions = pipelineExecutionsOutput
 
         if (pipelineIds.size() == 1) {
             result.insertPipelineContext(firstPipeline.getContext())
@@ -130,7 +127,6 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
 
         if (allPipelinesSucceeded) {
             logger.info("All child pipelines SUCCEEDED")
-            List<PipelineExecution> pipelineExecutions = RunMultiplePipelinesTask.getPipelinesExecutions()
             stage.outputs.put("executionsList", pipelineExecutions)
             return buildTaskResult(ExecutionStatus.SUCCEEDED, context, result)
         }
@@ -139,7 +135,6 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
             if (allPipelinesCompleted || stageData.monitorBehavior == MonitorPipelineStage.MonitorBehavior.FailFast) {
                 logger.info("Some child pipelines FAILED")
                 stage.appendErrorMessage("At least one monitored pipeline failed, look for errors in failed pipelines")
-                List<PipelineExecution> pipelineExecutions = RunMultiplePipelinesTask.getPipelinesExecutions()
                 stage.outputs.put("executionsList", pipelineExecutions)
                 return buildTaskResult(ExecutionStatus.TERMINAL, context, result)
             }
@@ -150,7 +145,6 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         if (allPipelinesCompleted) {
             logger.info("Some child pipelines were CANCELED")
             stage.appendErrorMessage("At least one monitored pipeline was cancelled")
-            List<PipelineExecution> pipelineExecutions = RunMultiplePipelinesTask.getPipelinesExecutions()
             stage.outputs.put("executionsList", pipelineExecutions)
             return buildTaskResult(ExecutionStatus.CANCELED, context, result)
         }
