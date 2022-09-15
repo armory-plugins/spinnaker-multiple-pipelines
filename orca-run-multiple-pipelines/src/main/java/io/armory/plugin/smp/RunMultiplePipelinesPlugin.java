@@ -109,6 +109,7 @@ class RunMultiplePipelinesStage implements StageDefinitionBuilder {
         builder.withTask("parsePipelinesYamlTask", ParsePipelinesYamlTask.class);
         builder.withTask("runMultiplePipelines", RunMultiplePipelinesTask.class);
         builder.withTask("monitorMultiplePipelinesTask", MonitorMultiplePipelinesTask.class);
+        //TODO: task that handles automatic rollbacks given rollback_onfailure=true
     }
 
 }
