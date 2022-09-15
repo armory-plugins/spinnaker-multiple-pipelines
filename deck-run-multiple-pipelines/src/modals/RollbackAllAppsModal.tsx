@@ -54,12 +54,14 @@ function RollbackAllAppsModal(props: any) {
                     return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
                 }
             });
+            if (foundStage === undefined) {
+                continue;
+            }
             const deployStage = foundStage;
 
         account = deployStage.context["deploy.account.name"];
         manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;
         location = deployStage.outputs["outputs.createdArtifacts"][0].location;
-
         const stage: IStage = {
             "account": account,
             "manifestName": manifestName,
@@ -102,7 +104,8 @@ function RollbackAllAppsModal(props: any) {
                 });
 
             if (triggerAfterSave) {
-                const trigger = await PipelineConfigService.triggerPipeline(
+                props.setOpenModal(false);
+                PipelineConfigService.triggerPipeline(
                 execution.application, "rollbackOnFailure")
                     .then(response => {
                         return response;
@@ -114,7 +117,6 @@ function RollbackAllAppsModal(props: any) {
                         }
                 });
             }
-
         }
         }
         setAutoCloseModal(true);
