@@ -105,7 +105,10 @@ bundle_web:
 ### release notes
 - Version 1.0.2 only supports concurrent executions using Redis
 - Version 1.0.3 supports concurrent executions using SQL database
-
+- Version 1.0.4:
+    - Breaking change don't use depends_on property 
+    - The plugin used to work in one task and had a loop to control the order of executions but this had a bug where the "main" task on previous versions restarted itself after 10 min
+    - Now the plugin stage uses three tasks - the last task monitor child executions
 # Spinnaker Multiple Pipelines plugin development
 
 ## Debug a Spinnaker cluster service using tellepresence
