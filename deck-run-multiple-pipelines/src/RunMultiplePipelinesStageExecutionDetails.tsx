@@ -25,7 +25,6 @@ declare global {
  */
 export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDetailsSectionProps) {
    const executionsSet = new Set();
-   let runningRollbackOnFailure = false;
 
    const [executionData, setExecutionData] = useState({});
    const [modalOpen, setModalOpen] = useState(false);
@@ -81,9 +80,6 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
     if (execution.trigger.correlationId != undefined) {
         if (execution.trigger.correlationId.includes(props.stage.id)) {
             executionsSet.add(execution);
-            if (execution.name == "rollbackOnFailure") {
-                runningRollbackOnFailure = true;
-            }
         }
     }
   });
@@ -241,18 +237,6 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
        {rollbackModalOpen && <RollbackModal setOpenModal={setRollbackModalOpen} executionData={executionData}/>}
        {rollbackAllAppsModalOpen && <RollbackAllAppsModal setOpenModal={setRollbackAllAppsModalOpen} allExecutions={props.stage.outputs.executionsList}/>}
        {cancelAllModalOpen && <CancelAllModal setOpenModal={setCancelAllModalOpen} allRunning={executionsSet}/>}
-       {runningRollbackOnFailure && props.stage.outputs.executionsList.length === 0
-       && props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true &&
-        <div>
-            <p>Triggering rollbacks on failure..</p>
-        </div>
-       }
-       {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure != undefined && props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure === true
-       && props.stage.outputs.executionsList.length > 0 && checkTerminalStatus(props.stage.outputs.executionsList) &&
-        <div>
-            <p>All rollbacks already triggered</p>
-        </div>
-       }
        {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure != undefined &&
        <div style={{marginTop:"6px"}}>
         <p>rollback_onfailure is: {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure.toString()}</p>

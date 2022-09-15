@@ -26,21 +26,17 @@ function RollbackAllAppsModal(props: any) {
         }
     }, [error, autoCloseModal]);
 
-    (function() {
-        if (rollbackPipelineId === "") {
-            props.allExecutions.forEach( async (execution:any) => {
-                const pipelines = await PipelineConfigService.getPipelinesForApplication(execution.application);
-                pipelines.forEach((p: any) => {
-                    if (p.name == "rollbackOnFailure") {
-                        rollbackPipelineId = p.id;
-                    }
-                });
-                if (rollbackPipelineId === "") {
-                    setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
-                }
-            });
-        }
-    }());
+    if (error === "") {
+        (function() {
+            const pipelines = window.spinnaker.application.pipelineConfigs.data;
+            const foundRollbackOnFailure = pipelines.find(pipeline => pipeline.name === "rollbackOnFailure");
+            if (foundRollbackOnFailure === undefined) {
+                setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
+            } else {
+                rollbackPipelineId = foundRollbackOnFailure.id;
+            }
+        }());
+    }
 
     const handleRollback = async () => {
         setLoading("block");
@@ -54,12 +50,14 @@ function RollbackAllAppsModal(props: any) {
                     return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
                 }
             });
+            if (foundStage === undefined) {
+                continue;
+            }
             const deployStage = foundStage;
 
         account = deployStage.context["deploy.account.name"];
         manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;
         location = deployStage.outputs["outputs.createdArtifacts"][0].location;
-
         const stage: IStage = {
             "account": account,
             "manifestName": manifestName,
@@ -102,7 +100,8 @@ function RollbackAllAppsModal(props: any) {
                 });
 
             if (triggerAfterSave) {
-                const trigger = await PipelineConfigService.triggerPipeline(
+                props.setOpenModal(false);
+                PipelineConfigService.triggerPipeline(
                 execution.application, "rollbackOnFailure")
                     .then(response => {
                         return response;
@@ -114,7 +113,6 @@ function RollbackAllAppsModal(props: any) {
                         }
                 });
             }
-
         }
         }
         setAutoCloseModal(true);
