@@ -26,15 +26,17 @@ function RollbackAllAppsModal(props: any) {
         }
     }, [error, autoCloseModal]);
 
-    (function() {
-        const pipelines = window.spinnaker.application.pipelineConfigs.data;
-        const foundRollbackOnFailure = pipelines.find(pipeline => pipeline.name === "rollbackOnFailure");
-        if (foundRollbackOnFailure === undefined) {
-            setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
-        } else {
-            rollbackPipelineId = foundRollbackOnFailure.id;
-        }
-    }());
+    if (error === "") {
+        (function() {
+            const pipelines = window.spinnaker.application.pipelineConfigs.data;
+            const foundRollbackOnFailure = pipelines.find(pipeline => pipeline.name === "rollbackOnFailure");
+            if (foundRollbackOnFailure === undefined) {
+                setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
+            } else {
+                rollbackPipelineId = foundRollbackOnFailure.id;
+            }
+        }());
+    }
 
     const handleRollback = async () => {
         setLoading("block");
