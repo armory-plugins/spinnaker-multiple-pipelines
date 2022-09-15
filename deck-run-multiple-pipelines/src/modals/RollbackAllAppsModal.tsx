@@ -27,18 +27,12 @@ function RollbackAllAppsModal(props: any) {
     }, [error, autoCloseModal]);
 
     (function() {
-        if (rollbackPipelineId === "") {
-            props.allExecutions.forEach( async (execution:any) => {
-                const pipelines = await PipelineConfigService.getPipelinesForApplication(execution.application);
-                pipelines.forEach((p: any) => {
-                    if (p.name == "rollbackOnFailure") {
-                        rollbackPipelineId = p.id;
-                    }
-                });
-                if (rollbackPipelineId === "") {
-                    setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
-                }
-            });
+        const pipelines = window.spinnaker.application.pipelineConfigs.data;
+        const foundRollbackOnFailure = pipelines.find(pipeline => pipeline.name === "rollbackOnFailure");
+        if (foundRollbackOnFailure === undefined) {
+            setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
+        } else {
+            rollbackPipelineId = foundRollbackOnFailure.id;
         }
     }());
 
