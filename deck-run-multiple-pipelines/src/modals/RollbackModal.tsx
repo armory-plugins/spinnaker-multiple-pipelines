@@ -29,14 +29,19 @@ function RollbackModal(props: any) {
 
     (async function() {
         const deployStage = (() => {
-              const result = props.executionData.stages.filter(function(stage: any) {
-                  return stage.name.startsWith("Deploy");
-              });
-              const foundStage = result.find(function(stage: any) {
-                  if (stage.outputs["artifacts"] != undefined) {
-                      return stage.outputs["artifacts"].find( ar => ar.name.includes(props.executionData.trigger.parameters.app));
-                  }
-              });
+            const result = props.executionData.stages.filter(function(stage: any) {
+                return stage.name.startsWith("Deploy");
+            });
+            const foundStages = result.filter(function(stage: any) {
+                if (stage.outputs["artifacts"] != undefined) {
+                    return stage.outputs["artifacts"].find( ar => ar.name.includes(props.executionData.trigger.parameters.app));
+                }
+            });
+            const foundStage = foundStages.reduce(
+                (prev, current) => {
+                    return prev.endTime > current.endTime ? prev : current
+                }
+            );
             return foundStage;
         })();
 
