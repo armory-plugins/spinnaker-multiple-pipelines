@@ -18,7 +18,6 @@ package io.armory.plugin.smp.config;
 
 import lombok.Data;
 
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +25,4 @@ import java.util.Map;
 public class RunMultiplePipelinesContext {
     private List<Map<Object, Object>> yamlConfig;
 
-    @Nullable
-    private Map<Object, Object> expressionEvaluationSummary;
 }
