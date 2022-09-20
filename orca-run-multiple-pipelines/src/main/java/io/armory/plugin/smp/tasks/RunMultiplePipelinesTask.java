@@ -29,7 +29,6 @@ import com.netflix.spinnaker.orca.front50.Front50Service;
 import javax.annotation.Nonnull;
 
 import io.armory.plugin.smp.parseyml.App;
-import io.armory.plugin.smp.parseyml.Apps;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
@@ -63,7 +62,6 @@ public class RunMultiplePipelinesTask implements Task {
     @Nonnull
     @Override
     public TaskResult execute(@Nonnull StageExecution stage) {
-        Apps apps = objectMapper.readValue(objectMapper.writeValueAsString(stage.getContext().get("apps")), Apps.class);
         Map<String, Stack<App>> stackApps = objectMapper.readValue(objectMapper.writeValueAsString(stage.getContext().get("stack_apps")), new TypeReference<>() {});
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
@@ -116,9 +114,8 @@ public class RunMultiplePipelinesTask implements Task {
                     .build();
         }
 
-        logger.info("Returning TaskResult everything worked correctly");
+        logger.info("Returning TaskResult SUCCEEDED for RunMultiplePipelinesTask");
         stage.getContext().put("executionIds", pipelineExecutionsIds);
-        stage.getContext().put("executions", pipelineExecutions);
         return TaskResult
                 .builder(returnExecutionStatus)
                 .context(stage.getContext())

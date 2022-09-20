@@ -45,14 +45,19 @@ function RollbackAllAppsModal(props: any) {
             const result = execution.stages.filter(function(stage: any) {
                 return stage.name.startsWith("Deploy");
             });
-            const foundStage = result.find(function(stage: any) {
+            const foundStages = result.filter(function(stage: any) {
                 if (stage.outputs["artifacts"] != undefined) {
                     return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
                 }
             });
-            if (foundStage === undefined) {
+            if (Array.isArray(foundStages) && foundStages.length===0) {
                 continue;
             }
+            const foundStage = foundStages.reduce(
+                (prev, current) => {
+                    return prev.endTime > current.endTime ? prev : current
+                }
+            );
             const deployStage = foundStage;
 
         account = deployStage.context["deploy.account.name"];

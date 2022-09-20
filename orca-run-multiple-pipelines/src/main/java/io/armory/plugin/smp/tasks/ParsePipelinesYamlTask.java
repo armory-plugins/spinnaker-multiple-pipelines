@@ -43,7 +43,6 @@ public class ParsePipelinesYamlTask implements Task {
 
         Map<String, Stack<App>> stack_apps = utilityHelper.tryWithStack(apps, objectMapper, gson);
         logger.info("Map of apps, detected returning success " + stack_apps.size() + " size");
-        stage.getContext().put("apps", apps);
         stage.getContext().put("stack_apps", stack_apps);
 
         return TaskResult
