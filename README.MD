@@ -8,6 +8,7 @@ Minimum tested version is 2.26.x
 | 1.0.2 <= |  2.27.x |
 | 1.0.3 <= |  2.27.x |
 | 1.0.4 <= |  2.27.x |
+| 1.0.5 <= |  2.27.x |
 
 NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
 
@@ -109,6 +110,7 @@ bundle_web:
     - Breaking change don't use depends_on property 
     - The plugin used to work in one task and had a loop to control the order of executions but this had a bug where the "main" task on previous versions restarted itself after 10 min
     - Now the plugin stage uses three tasks - the last task monitor child executions
+- Version 1.0.5: Fixes bug where failed evaluate expressions warnings were shown in the UI
 # Spinnaker Multiple Pipelines plugin development
 
 ## Debug a Spinnaker cluster service using tellepresence
