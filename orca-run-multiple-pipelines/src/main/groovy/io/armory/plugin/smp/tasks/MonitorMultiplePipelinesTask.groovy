@@ -13,7 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeUnit
+import java.util.stream.Collectors;
 
 import static com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType.PIPELINE;
 
@@ -127,6 +128,7 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
 
         if (allPipelinesSucceeded) {
             logger.info("All child pipelines SUCCEEDED")
+            pipelineExecutions = filterStages(pipelineExecutions)
             stage.outputs.put("executionsList", pipelineExecutions)
             return buildTaskResult(ExecutionStatus.SUCCEEDED, context, result)
         }
@@ -135,6 +137,7 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
             if (allPipelinesCompleted || stageData.monitorBehavior == MonitorPipelineStage.MonitorBehavior.FailFast) {
                 logger.info("Some child pipelines FAILED")
                 stage.appendErrorMessage("At least one monitored pipeline failed, look for errors in failed pipelines")
+                pipelineExecutions = filterStages(pipelineExecutions)
                 stage.outputs.put("executionsList", pipelineExecutions)
                 return buildTaskResult(ExecutionStatus.TERMINAL, context, result)
             }
@@ -145,11 +148,25 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         if (allPipelinesCompleted) {
             logger.info("Some child pipelines were CANCELED")
             stage.appendErrorMessage("At least one monitored pipeline was cancelled")
+            pipelineExecutions = filterStages(pipelineExecutions)
             stage.outputs.put("executionsList", pipelineExecutions)
             return buildTaskResult(ExecutionStatus.CANCELED, context, result)
         }
 
         return buildTaskResult(ExecutionStatus.RUNNING, context, result)
+    }
+
+    private List<PipelineExecution> filterStages(List<PipelineExecution> executions) {
+        ArrayList<PipelineExecution> filteredStagesExecutions = new ArrayList<>()
+        for (PipelineExecution pipelineExecution : executions) {
+             List<StageExecution> deployStages = pipelineExecution.getStages().stream()
+                     .filter({ stage -> stage.name.startsWith("Deploy") })
+                     .filter({ stage -> stage.status != ExecutionStatus.SKIPPED }).collect(Collectors.toList())
+            pipelineExecution.getStages().clear()
+            pipelineExecution.getStages().addAll(deployStages)
+            filteredStagesExecutions.add(pipelineExecution)
+        }
+        return filteredStagesExecutions
     }
 
     private buildTaskResult(ExecutionStatus status, Map<String, Object> context, MonitorPipelineStage.StageResult result) {
