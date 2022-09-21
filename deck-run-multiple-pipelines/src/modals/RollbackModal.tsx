@@ -55,18 +55,13 @@ function RollbackModal(props: any) {
         manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;
         location = deployStage.outputs["outputs.createdArtifacts"][0].location;
 
-        if (rollbackPipelineId === "") {
-            const pipelines = await PipelineConfigService.getPipelinesForApplication(props.executionData.application)
-            pipelines.forEach((p: any) => {
-                if (p.name == "rollbackOnFailure") {
-                    rollbackPipelineId = p.id;
-                }
-            });
-
-            if (rollbackPipelineId === "") {
-                if (error === "") {
-                    setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
-                }
+        if (error === "" && rollbackPipelineId === "") {
+            const pipelines = window.spinnaker.application.pipelineConfigs.data;
+            const foundRollbackOnFailure = pipelines.find(pipeline => pipeline.name === "rollbackOnFailure");
+            if (foundRollbackOnFailure === undefined) {
+                setError('Pipeline "rollbackOnFailure" not found create a pipeline with that name');
+            } else {
+                rollbackPipelineId = foundRollbackOnFailure.id;
             }
         }
     }());
