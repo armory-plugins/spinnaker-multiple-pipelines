@@ -81,7 +81,7 @@ function RollbackAllAppsModal(props: any) {
               {
                 context: {
                   expression: "${trigger['id']!=null}",
-                  failureMessage: "Error do not execute this pipeline as start manual execution"
+                  failureMessage: "This pipeline cannot be run manually. Please perform rollback using the bundled deployment pipeline."
                 },
                 failPipeline: true,
                 type: "expression"
