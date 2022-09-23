@@ -71,14 +71,30 @@ function RollbackAllAppsModal(props: any) {
             "cloudProvider": "kubernetes",
             "mode": "static",
             name: "Undo Rollout (Manifest) " + execution.trigger.parameters.app,
-            refId: "1", // unfortunately, we kept this loose early on, so it's either a string or a number
-            requisiteStageRefIds: [],
+            refId: "2", // unfortunately, we kept this loose early on, so it's either a string or a number
+            requisiteStageRefIds: ["1"],
             type: "undoRolloutManifest"
         };
 
+        const preconditionStage: IStage = {
+            "preconditions": [
+              {
+                context: {
+                  expression: "${trigger['id']!=null}",
+                  failureMessage: "This pipeline cannot be run manually. Please perform rollback using the bundled deployment pipeline."
+                },
+                failPipeline: true,
+                type: "expression"
+              }
+            ],
+            name: "Check Preconditions",
+            refId: "1",
+            requisiteStageRefIds: [],
+            type: "checkPreconditions"
+        };
+
         if (error === "") {
-           const stagesArray = [];
-           stagesArray.push(stage);
+           const stagesArray = [preconditionStage, stage];
             const pipeline: IPipeline = {
                   application: execution.application,
                   id: rollbackPipelineId,
@@ -105,10 +121,10 @@ function RollbackAllAppsModal(props: any) {
                 });
 
             if (triggerAfterSave) {
-                props.setOpenModal(false);
                 PipelineConfigService.triggerPipeline(
-                execution.application, "rollbackOnFailure")
+                execution.application, "rollbackOnFailure", {id: rollbackPipelineId})
                     .then(response => {
+                        props.setOpenModal(false);
                         return response;
                     }).catch(e => {
                         if (e.data.message == "null") {
@@ -120,7 +136,6 @@ function RollbackAllAppsModal(props: any) {
             }
         }
         }
-        setAutoCloseModal(true);
     };
 
     return (

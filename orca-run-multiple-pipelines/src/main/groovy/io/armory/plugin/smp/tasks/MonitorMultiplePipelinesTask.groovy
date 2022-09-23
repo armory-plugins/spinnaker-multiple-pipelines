@@ -1,5 +1,6 @@
-package io.armory.plugin.smp.tasks;
+package io.armory.plugin.smp.tasks
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.netflix.spinnaker.orca.api.pipeline.OverridableTimeoutRetryableTask;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
@@ -161,7 +162,17 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         for (PipelineExecution pipelineExecution : executions) {
              List<StageExecution> deployStages = pipelineExecution.getStages().stream()
                      .filter({ stage -> stage.name.startsWith("Deploy") })
-                     .filter({ stage -> stage.status != ExecutionStatus.SKIPPED }).collect(Collectors.toList())
+                     .filter({ stage -> stage.status != ExecutionStatus.SKIPPED })
+                     .collect(Collectors.toList())
+            deployStages = deployStages.stream().filter({ stage ->
+                List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(stage.getOutputs().get("manifests")), new TypeReference<List<Map<String, Object>>>() {})
+                if (manifests.get(0).get("kind").equals("DaemonSet") ||
+                        manifests.get(0).get("kind").equals("Deployment") ||
+                        manifests.get(0).get("kind").equals("StatefulSet")) {
+                    return true
+                }
+                return false
+            }).collect(Collectors.toList())
             pipelineExecution.getStages().clear()
             pipelineExecution.getStages().addAll(deployStages)
             filteredStagesExecutions.add(pipelineExecution)
