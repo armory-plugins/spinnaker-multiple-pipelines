@@ -9,6 +9,7 @@ Minimum tested version is 2.26.x
 | 1.0.3 <= |  2.27.x |
 | 1.0.4 <= |  2.27.x |
 | 1.0.5 <= |  2.27.x |
+| 1.0.6 <= |  2.27.x |
 
 NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
 
@@ -30,7 +31,7 @@ spinnakerConfig:
             plugins:
               Armory.RunMultiplePipelines:
                 enabled: true
-                version: 1.0.4
+                version: 1.0.6
           repositories:
             runMultiplePipelinesRepo:
               url: https://raw.githubusercontent.com/armory/multiple-pipelines-plugin-releases/main/plugins.json
@@ -40,7 +41,7 @@ spinnakerConfig:
           plugins:
             Armory.RunMultiplePipelines:
             enabled: true
-            version: 1.0.4
+            version: 1.0.6
             extensions:
               armory.runMultiplePipelinesStage:
                 enabled: true
@@ -104,13 +105,17 @@ bundle_web:
 - For rollback_onfailure or manual rollbacks to work you need to create a pipeline with the name rollbackOnFailure in the same application
 
 ### release notes
-- Version 1.0.2 only supports concurrent executions using Redis
-- Version 1.0.3 supports concurrent executions using SQL database
+- Version 1.0.2 Only supports concurrent executions using Redis
+- Version 1.0.3 Supports concurrent executions using SQL database
 - Version 1.0.4:
     - Breaking change don't use depends_on property 
     - The plugin used to work in one task and had a loop to control the order of executions but this had a bug where the "main" task on previous versions restarted itself after 10 min
     - Now the plugin stage uses three tasks - the last task monitor child executions
 - Version 1.0.5: Fixes bug where failed evaluate expressions warnings were shown in the UI
+- Version 1.0.6: 
+    - Prevent manual executions of rollbackOnFailure pipeline used by the plugin
+    - Filter the deploy manifest stages of child_pipeline to only retrieve on outputs supported types for rollout (Deployment/DaemonSet/StatefulSet)
+
 # Spinnaker Multiple Pipelines plugin development
 
 ## Debug a Spinnaker cluster service using tellepresence
