@@ -74,17 +74,33 @@ function RollbackModal(props: any) {
         "cloudProvider": "kubernetes",
         "mode": "static",
         name: "Undo Rollout (Manifest) " + parameterAppName,
-        refId: "1", // unfortunately, we kept this loose early on, so it's either a string or a number
-        requisiteStageRefIds: [],
+        refId: "2", // unfortunately, we kept this loose early on, so it's either a string or a number
+        requisiteStageRefIds: ["1"],
         type: "undoRolloutManifest"
+    };
+
+    const preconditionStage: IStage = {
+        "preconditions": [
+          {
+            context: {
+              expression: "${trigger['id']!=null}",
+              failureMessage: "Error do not execute this pipeline as start manual execution"
+            },
+            failPipeline: true,
+            type: "expression"
+          }
+        ],
+        name: "Check Preconditions",
+        refId: "1",
+        requisiteStageRefIds: [],
+        type: "checkPreconditions"
     };
 
     const handleRollback = async () => {
         setLoading("block");
         setDisabled(true);
         if (error === "") {
-           const stagesArray = [];
-           stagesArray.push(stage);
+           const stagesArray = [preconditionStage, stage];
             const pipeline: IPipeline = {
                   application: props.executionData.application,
                   id: rollbackPipelineId,
@@ -112,7 +128,7 @@ function RollbackModal(props: any) {
 
             if (triggerAfterSave) {
                 const trigger = await PipelineConfigService.triggerPipeline(
-                props.executionData.application, "rollbackOnFailure")
+                props.executionData.application, "rollbackOnFailure", {id: rollbackPipelineId})
                     .then(response => {
                         return response;
                     }).catch(e => {
