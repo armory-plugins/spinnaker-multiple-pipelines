@@ -24,6 +24,7 @@ declare global {
  * - `props.stage.context` maps to your SimpleStage's `Context` class.
  */
 export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDetailsSectionProps) {
+   let runningExecutions: any[] = [];
    const executionsSet = new Set();
 
    const [executionData, setExecutionData] = useState({});
@@ -31,17 +32,14 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
    const [rollbackModalOpen ,setRollbackModalOpen] = useState(false);
    const [rollbackAllAppsModalOpen ,setRollbackAllAppsModalOpen] = useState(false);
    const [cancelAllModalOpen, setCancelAllModalOpen] = useState(false);
-   const [data ,setData] = useState([]);
 
    if (props.stage.outputs.executionsList == undefined) {
     props.stage.outputs.executionsList = [];
    }
 
-   if (window.spinnaker) {
-    const runningExecutions = window.spinnaker.application.runningExecutions.data;
-    if (data != window.spinnaker.application.runningExecutions.data)
-        setData(runningExecutions);
-   }
+  if (window.spinnaker.application != undefined && window.spinnaker.application.runningExecutions != undefined) {
+    runningExecutions = window.spinnaker.application.runningExecutions.data;
+  }
 
    const {
         application,
@@ -76,7 +74,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
     setCancelAllModalOpen(true);
   }
 
-  data.forEach( (execution: any) => {
+  runningExecutions.forEach( (execution: any) => {
     if (execution.trigger.correlationId != undefined) {
         if (execution.trigger.correlationId.includes(props.stage.id)) {
             executionsSet.add(execution);
@@ -120,15 +118,6 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
       return false;
   }
 
-  function checkTerminalStatus(executions:any) {
-    for (const execution of executions) {
-        if (execution.status == "TERMINAL") {
-            return true;
-        }
-    }
-    return false;
-  }
-
     return (
       <ExecutionDetailsSection name={props.name} current={props.current}>
       <StageFailureMessage stage={stage} message={stage.failureMessage} />
@@ -143,7 +132,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
              </tr>
          </thead>
          <tbody>
-       {props.stage.outputs.executionsList.length === 0 && (
+       {props.stage.outputs.executionsList.length === 0 && executionsSet.size > 0 && (
        <>
         {Array.from(executionsSet).map((execution: any, index: any) => {
             return (
