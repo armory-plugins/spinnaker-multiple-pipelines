@@ -24,7 +24,7 @@ declare global {
  * - `props.stage.context` maps to your SimpleStage's `Context` class.
  */
 export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDetailsSectionProps) {
-   let runningExecutions: any[];
+   let runningExecutions: any[] = [];
    const executionsSet = new Set();
 
    const [executionData, setExecutionData] = useState({});
@@ -37,7 +37,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
     props.stage.outputs.executionsList = [];
    }
 
-  if (window.spinnaker.application != undefined) {
+  if (window.spinnaker.application != undefined && window.spinnaker.application.runningExecutions != undefined) {
     runningExecutions = window.spinnaker.application.runningExecutions.data;
   }
 
@@ -132,7 +132,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
              </tr>
          </thead>
          <tbody>
-       {props.stage.outputs.executionsList.length === 0 && (
+       {props.stage.outputs.executionsList.length === 0 && executionsSet.size > 0 && (
        <>
         {Array.from(executionsSet).map((execution: any, index: any) => {
             return (
