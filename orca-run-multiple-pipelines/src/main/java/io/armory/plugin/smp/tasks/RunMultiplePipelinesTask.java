@@ -78,6 +78,11 @@ public class RunMultiplePipelinesTask implements Task {
         //create a linked list of Threads to join on main thread
         List<Thread> threadList = new LinkedList<>();
 
+        //Add executionIdentifier parameter for UI
+        for (Map.Entry<String, Stack<App>> entry : stackApps.entrySet()) {
+            entry.getValue().peek().getArguments().put("executionIdentifier", entry.getKey());
+        }
+
         //trigger pipelines in different Threads
         for (Stack<App> stack : stackApps.values()) {
             Runnable triggerThis = () -> triggerThread(stack, stage, pipelines, pipelineExecutions);
@@ -102,6 +107,7 @@ public class RunMultiplePipelinesTask implements Task {
             if(pipelineExecutions.isEmpty()) {
                 return TaskResult
                         .builder(ExecutionStatus.TERMINAL)
+                        .context(stage.getContext())
                         .build();
             }
         }
@@ -111,6 +117,7 @@ public class RunMultiplePipelinesTask implements Task {
             stage.appendErrorMessage("Child Pipelines were not executed");
             return TaskResult
                     .builder(ExecutionStatus.TERMINAL)
+                    .context(stage.getContext())
                     .build();
         }
 

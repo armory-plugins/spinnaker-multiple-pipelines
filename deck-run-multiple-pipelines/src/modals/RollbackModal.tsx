@@ -11,7 +11,7 @@ declare global {
 
 function RollbackModal(props: any) {
     let rollbackPipelineId = "";
-    const parameterAppName = props.executionData.trigger.parameters.app;
+    const parameterAppName = props.executionData.trigger.parameters.executionIdentifier;
     let account = "";
     let manifestName = "";
     let location = "";

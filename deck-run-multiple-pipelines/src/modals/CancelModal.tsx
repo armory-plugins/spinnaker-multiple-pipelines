@@ -49,7 +49,7 @@ function CancelModal(props: any) {
                         </button>
                     </div>
                     <div className="modal-header">
-                        <h4 className="modal-title">Really stop pipeline execution of {props.executionData.trigger.parameters.app}?</h4>
+                        <h4 className="modal-title">Really stop pipeline execution of {props.executionData.trigger.parameters.executionIdentifier}?</h4>
                     </div>
                     {error!="" && (
                     <div className="modal-body" style={{color:"#bb231e"}}>

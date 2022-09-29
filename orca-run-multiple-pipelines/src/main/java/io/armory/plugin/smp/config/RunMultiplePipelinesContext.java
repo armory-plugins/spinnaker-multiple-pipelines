@@ -25,4 +25,6 @@ import java.util.Map;
 public class RunMultiplePipelinesContext {
     private List<Map<Object, Object>> yamlConfig;
 
+    private boolean checkDuplicated = true;
+
 }

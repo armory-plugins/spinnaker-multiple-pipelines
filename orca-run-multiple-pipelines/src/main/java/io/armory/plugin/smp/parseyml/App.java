@@ -17,6 +17,7 @@
 package io.armory.plugin.smp.parseyml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,6 +26,7 @@ import java.util.Map;
 
 @Getter
 @Setter
+@EqualsAndHashCode
 public class App {
     @JsonProperty("arguments")
     private Map<String, Object> arguments;
