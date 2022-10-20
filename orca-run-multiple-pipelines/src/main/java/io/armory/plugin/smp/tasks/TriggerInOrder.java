@@ -19,6 +19,7 @@ package io.armory.plugin.smp.tasks;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
+import com.netflix.spinnaker.orca.api.pipeline.models.Trigger;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
 import com.netflix.spinnaker.orca.jackson.OrcaObjectMapper;
 import com.netflix.spinnaker.security.AuthenticatedRequest;
@@ -57,6 +58,17 @@ public class TriggerInOrder implements Runnable{
         pipelineExecutionCopy.getStages().clear();
         pipelineExecutionCopy.getStages().add(stage.getExecution().getStages().stream()
                 .filter(s -> s.getId().equals(stage.getId())).findFirst().get());
+
+        /*
+        Create a Trigger with one extra property "executionIdentifier" to identify the child execution
+        executionIdentifier property is under trigger.parentExecution.trigger
+        Check StageExecutionsDetails for an example where is used deck-run-multiple-pipelines/src/RunMultiplePipelinesStageExecutionDetails.tsx
+        */
+        Map modifiedTrigger = objectOrcaMapper.readValue(objectOrcaMapper.writeValueAsString(pipelineExecutionCopy.getTrigger()), Map.class);
+        modifiedTrigger.put("executionIdentifier", app.getArguments().remove("executionIdentifier"));
+        Trigger trigger = objectOrcaMapper.readValue(objectOrcaMapper.writeValueAsString(modifiedTrigger), Trigger.class);
+        pipelineExecutionCopy.setTrigger(trigger);
+
         try {
             this.pipelineExecution = dependentPipelineStarter.trigger(
                     pipelineConfigCopy,

@@ -149,7 +149,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
                               }}
                               options={{ inherit: false, reload: 'home.applications.application.pipelines.executionDetails' }}
                             >
-                               <a>{execution.trigger.parameters.app}</a>
+                               <a>{execution.trigger.parentExecution.trigger.executionIdentifier}</a>
                             </UISref>{' '}
                     </td>
                  }
@@ -185,7 +185,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
                       }}
                       options={{ inherit: false, reload: 'home.applications.application.pipelines.executionDetails' }}
                     >
-                       <a>{execution.trigger.parameters.app}</a>
+                       <a>{execution.trigger.parentExecution.trigger.executionIdentifier}</a>
                     </UISref>{' '}
                  </td>
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>
@@ -226,11 +226,6 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
        {rollbackModalOpen && <RollbackModal setOpenModal={setRollbackModalOpen} executionData={executionData}/>}
        {rollbackAllAppsModalOpen && <RollbackAllAppsModal setOpenModal={setRollbackAllAppsModalOpen} allExecutions={props.stage.outputs.executionsList}/>}
        {cancelAllModalOpen && <CancelAllModal setOpenModal={setCancelAllModalOpen} allRunning={executionsSet}/>}
-       {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure != undefined &&
-       <div style={{marginTop:"6px"}}>
-        <p>rollback_onfailure is: {props.stage.context.yamlConfig[0].bundle_web.rollback_onfailure.toString()}</p>
-       </div>
-       }
       </ExecutionDetailsSection>
     );
 }
