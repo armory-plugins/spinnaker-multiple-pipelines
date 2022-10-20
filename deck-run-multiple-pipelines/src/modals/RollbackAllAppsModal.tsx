@@ -70,7 +70,7 @@ function RollbackAllAppsModal(props: any) {
             "numRevisionsBack": 1,
             "cloudProvider": "kubernetes",
             "mode": "static",
-            name: "Undo Rollout (Manifest) " + execution.trigger.parameters.executionIdentifier,
+            name: "Undo Rollout (Manifest) " + execution.trigger.parentExecution.trigger.executionIdentifier,
             refId: "2", // unfortunately, we kept this loose early on, so it's either a string or a number
             requisiteStageRefIds: ["1"],
             type: "undoRolloutManifest"

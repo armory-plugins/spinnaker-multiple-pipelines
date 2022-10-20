@@ -149,7 +149,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
                               }}
                               options={{ inherit: false, reload: 'home.applications.application.pipelines.executionDetails' }}
                             >
-                               <a>{execution.trigger.parameters.executionIdentifier}</a>
+                               <a>{execution.trigger.parentExecution.trigger.executionIdentifier}</a>
                             </UISref>{' '}
                     </td>
                  }
@@ -185,7 +185,7 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
                       }}
                       options={{ inherit: false, reload: 'home.applications.application.pipelines.executionDetails' }}
                     >
-                       <a>{execution.trigger.parameters.executionIdentifier}</a>
+                       <a>{execution.trigger.parentExecution.trigger.executionIdentifier}</a>
                     </UISref>{' '}
                  </td>
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>

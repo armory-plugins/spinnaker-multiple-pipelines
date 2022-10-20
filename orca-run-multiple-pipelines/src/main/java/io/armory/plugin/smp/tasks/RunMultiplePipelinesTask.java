@@ -150,7 +150,9 @@ public class RunMultiplePipelinesTask implements Task {
                 e.printStackTrace();
             }
             logger.info("Adding child pipeline execution to pipelineExecutions list... {}", triggerInOrder.getPipelineExecution());
-            pipelineExecutions.add(triggerInOrder.getPipelineExecution());
+            if (ObjectUtils.isNotEmpty(triggerInOrder.getPipelineExecution())) {
+                pipelineExecutions.add(triggerInOrder.getPipelineExecution());
+            }
         }
         logger.info("TriggerThread method completed pipelineExecutions list size is " + pipelineExecutions.size());
     }

@@ -9,6 +9,7 @@ import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.front50.pipeline.MonitorPipelineStage;
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository
+import org.apache.commons.lang3.ObjectUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -164,12 +165,16 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
                      .filter({ stage -> stage.name.startsWith("Deploy") })
                      .filter({ stage -> stage.status != ExecutionStatus.SKIPPED })
                      .collect(Collectors.toList())
+
             deployStages = deployStages.stream().filter({ stage ->
-                List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(stage.getOutputs().get("manifests")), new TypeReference<List<Map<String, Object>>>() {})
-                if (manifests.get(0).get("kind").equals("DaemonSet") ||
-                        manifests.get(0).get("kind").equals("Deployment") ||
-                        manifests.get(0).get("kind").equals("StatefulSet")) {
-                    return true
+                if (ObjectUtils.isNotEmpty(stage.getOutputs())) {
+                    List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(stage.getOutputs().get("manifests")), new TypeReference<List<Map<String, Object>>>() {})
+                    if (manifests.get(0).get("kind").equals("DaemonSet") ||
+                            manifests.get(0).get("kind").equals("Deployment") ||
+                            manifests.get(0).get("kind").equals("StatefulSet")) {
+                        return true
+                    }
+                    return false
                 }
                 return false
             }).collect(Collectors.toList())
