@@ -10,6 +10,7 @@ Minimum tested version is 2.26.x
 | 1.0.4 <= |  2.27.x |
 | 1.0.5 <= |  2.27.x |
 | 1.0.6 <= |  2.27.x |
+| 1.0.7 <= |  2.27.x |
 
 NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
 
@@ -31,7 +32,7 @@ spinnakerConfig:
             plugins:
               Armory.RunMultiplePipelines:
                 enabled: true
-                version: 1.0.6
+                version: 1.0.7
           repositories:
             runMultiplePipelinesRepo:
               url: https://raw.githubusercontent.com/armory/multiple-pipelines-plugin-releases/main/plugins.json
@@ -41,7 +42,7 @@ spinnakerConfig:
           plugins:
             Armory.RunMultiplePipelines:
             enabled: true
-            version: 1.0.6
+            version: 1.0.7
             extensions:
               armory.runMultiplePipelinesStage:
                 enabled: true
@@ -65,17 +66,13 @@ bundle_web:
       - object
       - object
     child_pipelines: string
-    depends_on: 
-      - string
-      - string
-  rollback_onfalure: boolean
 ```
 Example:
 ```yaml
 bundle_web:
   appName2:
     arguments:
-      app: appName2
+      app: app1
       deploymentFrezeOverride: true
       skipCanary: true
       tag: "1.1.0"
@@ -83,7 +80,7 @@ bundle_web:
     child_pipeline: childPipeline
   appName1:
     arguments:
-      app: appName1
+      app: app2
       deploymentFrezeOverride: true
       skipCanary: true
       tag: "1.1.0"
@@ -93,12 +90,6 @@ bundle_web:
 
 ## yaml config specifics
 - The bundle name needs to be bundle_web
-- All apps need an argument app with the same name example:
-```
-  appName1:
-    arguments:
-      app: appName1
-  ```
 - The child_pipeline name needs to exist on the same spinnaker application
 - The Deploy (manifest) stage you wish to rollback in your child_pipeline has to have the prefix "Deploy"
 - The plugin will look a created artifact name that includes the app argument
@@ -115,6 +106,10 @@ bundle_web:
 - Version 1.0.6: 
     - Prevent manual executions of rollbackOnFailure pipeline used by the plugin
     - Filter the deploy manifest stages of child_pipeline to only retrieve on outputs supported types for rollout (Deployment/DaemonSet/StatefulSet)
+- Version 1.0.7:
+    - Removes restriction where object name needed a match for arguments.app -> check old readme [point two "All apps need an argument app..."](https://github.com/armory/spinnaker-multiple-pipelines/tree/ba2b3155851f05608d899864bc37064730a5dbe5#yaml-config-specifics)
+    - Added a stage property "checkDuplicated" for validation when reading the yaml-config to check if you have duplicated objects(same arguments values and same child_pipeline) 
+    - checkDuplicated is a hidden property by default set as true, setting it as false will mean you are allowing duplicated executions
 
 # Spinnaker Multiple Pipelines plugin development
 
