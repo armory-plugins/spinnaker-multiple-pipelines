@@ -27,6 +27,7 @@ import io.armory.plugin.smp.tasks.ParsePipelinesYamlTask;
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask;
 import javax.annotation.Nonnull;
 
+import io.armory.plugin.smp.tasks.SaveOutputsForDetailsTask;
 import org.apache.commons.lang3.tuple.Pair;
 import org.pf4j.PluginWrapper;
 import org.slf4j.Logger;
@@ -57,9 +58,7 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
     }
 
     @Override
-    public void start() {
-        logger.info("Starting RunMultiplePipelines plugin...");
-    }
+    public void start() { logger.info("Starting RunMultiplePipelines plugin..."); }
 
     @Override
     public void stop() {
@@ -78,6 +77,7 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
                 Pair.of("RunMultiplePipelinesTask", RunMultiplePipelinesTask.class),
                 Pair.of("ParsePipelinesYamlTask", ParsePipelinesYamlTask.class),
                 Pair.of("MonitorMultiplePipelinesTask", MonitorMultiplePipelinesTask.class),
+                Pair.of("SaveOutputsForDetailsTask", SaveOutputsForDetailsTask.class),
                 Pair.of("MyExecutionLauncher", MyExecutionLauncher.class)
         );
         beanList.forEach( curr -> {
@@ -107,8 +107,11 @@ class RunMultiplePipelinesStage implements StageDefinitionBuilder {
     @Override
     public void taskGraph(@Nonnull StageExecution stage, @Nonnull TaskNode.Builder builder) {
         builder.withTask("parsePipelinesYamlTask", ParsePipelinesYamlTask.class);
-        builder.withTask("runMultiplePipelines", RunMultiplePipelinesTask.class);
-        builder.withTask("monitorMultiplePipelinesTask", MonitorMultiplePipelinesTask.class);
+        builder.withLoop(sub -> {
+            sub.withTask("runMultiplePipelines", RunMultiplePipelinesTask.class);
+            sub.withTask("monitorMultiplePipelinesTask", MonitorMultiplePipelinesTask.class);
+        });
+        builder.withTask("saveOutputsForDetailsTask", SaveOutputsForDetailsTask.class);
         //TODO: task that handles automatic rollbacks given rollback_onfailure=true
     }
 

@@ -17,13 +17,11 @@
 package io.armory.plugin.smp.parseyml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.util.Map;
 
-@Getter
-@Setter
+@Data
 public class BundleWeb {
     @JsonProperty("bundle_web")
     private Map<String, Object> bundleWeb;
