@@ -16,7 +16,6 @@
 
 package io.armory.plugin.smp.config;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
@@ -31,7 +30,7 @@ import java.util.Map;
 
 public class UtilityHelper {
 
-    public Apps getApps(RunMultiplePipelinesContext context, ObjectMapper mapper) throws JsonProcessingException {
+    public Apps getApps(RunMultiplePipelinesContext context, ObjectMapper mapper) {
         BundleWeb bundleWeb = mapper.convertValue(context.getYamlConfig().get(0), BundleWeb.class);
 
         return mapper.convertValue(bundleWeb.getBundleWeb(), Apps.class);
@@ -65,7 +64,7 @@ public class UtilityHelper {
      * <p> before adding checks that his predecessors are already added and himself has not been added
      */
     public void addLevels(List<List<App>> orderOfExecutions, MutableGraph<App> graph2, List<App> allAppsInWholeQueue, int i) {
-        List<List<App>> newQueueQueue = new LinkedList<>();
+        List<List<App>> listListOfApps = new LinkedList<>();
         for(App app : orderOfExecutions.get(i)) {
             if (!allAppsInWholeQueue.contains(app)) {
                 allAppsInWholeQueue.add(app);
@@ -84,10 +83,10 @@ public class UtilityHelper {
             });
         }
         if (ObjectUtils.isNotEmpty(newLevel)) {
-            newQueueQueue.add(newLevel);
+            listListOfApps.add(newLevel);
         }
-        if (ObjectUtils.isNotEmpty(newQueueQueue)) {
-            orderOfExecutions.addAll(newQueueQueue);
+        if (ObjectUtils.isNotEmpty(listListOfApps)) {
+            orderOfExecutions.addAll(listListOfApps);
             addLevels(orderOfExecutions, graph2, allAppsInWholeQueue, ++i);
         }
     }
