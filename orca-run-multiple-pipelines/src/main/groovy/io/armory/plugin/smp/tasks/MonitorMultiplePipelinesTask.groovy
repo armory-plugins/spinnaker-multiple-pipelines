@@ -196,10 +196,12 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
                     List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(stage.getOutputs().get("manifests")), new TypeReference<List<Map<String, Object>>>() {})
                     Map<String, Object> metadata = manifests.get(0).get("metadata")
                     String name = metadata.get("name")
+                    String appParam = pipelineExecution.getTrigger().getParameters().get("app") as String
                     if ( (manifests.get(0).get("kind").equals("DaemonSet") ||
                             manifests.get(0).get("kind").equals("Deployment") ||
                             manifests.get(0).get("kind").equals("StatefulSet") ) &&
-                            name.contains(pipelineExecution.getTrigger().getParameters().get("app") as CharSequence)) {
+                            ObjectUtils.isNotEmpty(appParam) &&
+                            name.contains(appParam)) {
                         return true
                     }
                     return false
