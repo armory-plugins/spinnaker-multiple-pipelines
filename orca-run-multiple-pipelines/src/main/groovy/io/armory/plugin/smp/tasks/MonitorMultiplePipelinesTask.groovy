@@ -158,15 +158,7 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
                             .build()
                 }
 
-                stage.getOutputs().clear()
-                stage.getContext().remove("orderOfExecutions")
-                stage.getContext().remove("runMultiplePipelinesOutputs")
-                stage.outputs.put("executionsList", multiplePipelinesOutputsList)
-                return TaskResult
-                        .builder(ExecutionStatus.TERMINAL)
-                        .context(stage.getContext())
-                        .outputs(stage.getOutputs())
-                        .build()
+                return buildTaskResult(ExecutionStatus.TERMINAL, stage, multiplePipelinesOutputsList)
             }
         }
 
@@ -185,15 +177,7 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
                         .build()
             }
 
-            stage.getOutputs().clear()
-            stage.getContext().remove("orderOfExecutions")
-            stage.getContext().remove("runMultiplePipelinesOutputs")
-            stage.outputs.put("executionsList", multiplePipelinesOutputsList)
-            return TaskResult
-                    .builder(ExecutionStatus.CANCELED)
-                    .context(stage.getContext())
-                    .outputs(stage.getOutputs())
-                    .build()
+            return buildTaskResult(ExecutionStatus.CANCELED, stage, multiplePipelinesOutputsList)
         }
 
         return buildTaskResult(ExecutionStatus.RUNNING, context, result)
@@ -274,6 +258,18 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         return TaskResult.builder(status)
                 .context(context)
                 .outputs(objectMapper.convertValue(result, Map))
+                .build()
+    }
+
+    private buildTaskResult(ExecutionStatus status, StageExecution stage, List<RunMultiplePipelinesOutputs> multiplePipelinesOutputsList) {
+        stage.getOutputs().clear()
+        stage.getContext().remove("orderOfExecutions")
+        stage.getContext().remove("runMultiplePipelinesOutputs")
+        stage.outputs.put("executionsList", multiplePipelinesOutputsList)
+        return TaskResult
+                .builder(status)
+                .context(stage.getContext())
+                .outputs(stage.getOutputs())
                 .build()
     }
 
