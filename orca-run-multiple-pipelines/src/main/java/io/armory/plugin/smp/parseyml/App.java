@@ -20,13 +20,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Data
 public class App {
     @JsonProperty("arguments")
-    private Map<String, Object> arguments;
+    private Map<String, Object> arguments = new HashMap<>();
 
     @JsonProperty("child_pipeline")
     private String childPipeline;
