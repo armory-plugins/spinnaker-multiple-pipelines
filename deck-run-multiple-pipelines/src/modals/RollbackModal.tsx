@@ -11,7 +11,7 @@ declare global {
 
 function RollbackModal(props: any) {
     let rollbackPipelineId = "";
-    const parameterAppName = props.executionData.trigger.parentExecution.trigger.executionIdentifier;
+    const parameterAppName = props.executionData.executionIdentifier;
     let account = "";
     let manifestName = "";
     let location = "";
@@ -28,32 +28,16 @@ function RollbackModal(props: any) {
     }, [error, autoCloseModal]);
 
     (async function() {
-        const deployStage = (() => {
-            const result = props.executionData.stages.filter(function(stage: any) {
-                return stage.name.startsWith("Deploy");
-            });
-            const foundStages = result.filter(function(stage: any) {
-                if (stage.outputs["artifacts"] != undefined) {
-                    return stage.outputs["artifacts"].find( ar => ar.name.includes(props.executionData.trigger.parameters.app));
-                }
-            });
-            const foundStage = foundStages.reduce(
-                (prev, current) => {
-                    return prev.endTime > current.endTime ? prev : current
-                }
-            );
-            return foundStage;
-        })();
 
-        if (deployStage.outputs["outputs.createdArtifacts"] === undefined) {
+        if (props.executionData.artifactCreated === undefined) {
             if (error === "") {
                 setError("Can't perform rollback this pipeline did not create an artifact");
             }
             return;
         }
-        account = deployStage.context["deploy.account.name"];
-        manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;
-        location = deployStage.outputs["outputs.createdArtifacts"][0].location;
+        account = props.executionData.artifactCreated.account;
+        manifestName = props.executionData.artifactCreated.manifestName;
+        location = props.executionData.artifactCreated.location;
 
         if (error === "" && rollbackPipelineId === "") {
             const pipelines = window.spinnaker.application.pipelineConfigs.data;
@@ -102,7 +86,7 @@ function RollbackModal(props: any) {
         if (error === "") {
            const stagesArray = [preconditionStage, stage];
             const pipeline: IPipeline = {
-                  application: props.executionData.application,
+                  application: spinnaker.application.name ,
                   id: rollbackPipelineId,
                   keepWaitingPipelines: false,
                   limitConcurrent: false,
@@ -128,7 +112,7 @@ function RollbackModal(props: any) {
 
             if (triggerAfterSave) {
                 const trigger = await PipelineConfigService.triggerPipeline(
-                props.executionData.application, "rollbackOnFailure", {id: rollbackPipelineId})
+                spinnaker.application.name, "rollbackOnFailure", {id: rollbackPipelineId})
                     .then(response => {
                         return response;
                     }).catch(e => {

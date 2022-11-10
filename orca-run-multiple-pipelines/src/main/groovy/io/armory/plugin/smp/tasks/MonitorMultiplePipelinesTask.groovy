@@ -7,8 +7,10 @@ import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
-import com.netflix.spinnaker.orca.front50.pipeline.MonitorPipelineStage;
+import com.netflix.spinnaker.orca.front50.pipeline.MonitorPipelineStage
+import com.netflix.spinnaker.orca.pipeline.model.PipelineTrigger
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository
+import io.armory.plugin.smp.config.RunMultiplePipelinesOutputs
 import org.apache.commons.lang3.ObjectUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,10 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
 
     @Override
     TaskResult execute(StageExecution stage) {
+        stage.context.putIfAbsent("runMultiplePipelinesOutputs", new LinkedList())
+        List<RunMultiplePipelinesOutputs> multiplePipelinesOutputsList =  stage.getContext().get("runMultiplePipelinesOutputs")
+        int levelNumber = stage.getContext().get("levelNumber") as int
+        int orderOfExecutionsSize = stage.getContext().get("orderOfExecutionsSize") as int
         stage.getContext().put("monitorBehavior", MonitorPipelineStage.MonitorBehavior.WaitForAllToComplete)
         List<String> pipelineIds
         boolean isLegacyStage = false
@@ -124,14 +130,17 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         }
         List<PipelineExecution> pipelineExecutions = pipelineExecutionsOutput
 
-        if (pipelineIds.size() == 1) {
-            result.insertPipelineContext(firstPipeline.getContext())
-        }
-
         if (allPipelinesSucceeded) {
             logger.info("All child pipelines SUCCEEDED")
             pipelineExecutions = filterStages(pipelineExecutions)
-            stage.outputs.put("executionsList", pipelineExecutions)
+            processOutputs(pipelineExecutions, multiplePipelinesOutputsList)
+            if (levelNumber < (orderOfExecutionsSize-1)) {
+                stage.getContext().put("levelNumber", ++levelNumber)
+                return TaskResult
+                        .builder(ExecutionStatus.REDIRECT)
+                        .context(stage.getContext())
+                        .build()
+            }
             return buildTaskResult(ExecutionStatus.SUCCEEDED, context, result)
         }
 
@@ -140,8 +149,16 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
                 logger.info("Some child pipelines FAILED")
                 stage.appendErrorMessage("At least one monitored pipeline failed, look for errors in failed pipelines")
                 pipelineExecutions = filterStages(pipelineExecutions)
-                stage.outputs.put("executionsList", pipelineExecutions)
-                return buildTaskResult(ExecutionStatus.TERMINAL, context, result)
+                processOutputs(pipelineExecutions, multiplePipelinesOutputsList)
+                if (stage.getContext().get("ignoreUncompleted")==true && levelNumber < (orderOfExecutionsSize-1)) {
+                    stage.getContext().put("levelNumber", ++levelNumber)
+                    return TaskResult
+                            .builder(ExecutionStatus.REDIRECT)
+                            .context(stage.getContext())
+                            .build()
+                }
+
+                return buildTaskResult(ExecutionStatus.TERMINAL, stage, multiplePipelinesOutputsList)
             }
         }
 
@@ -151,8 +168,16 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
             logger.info("Some child pipelines were CANCELED")
             stage.appendErrorMessage("At least one monitored pipeline was cancelled")
             pipelineExecutions = filterStages(pipelineExecutions)
-            stage.outputs.put("executionsList", pipelineExecutions)
-            return buildTaskResult(ExecutionStatus.CANCELED, context, result)
+            processOutputs(pipelineExecutions, multiplePipelinesOutputsList)
+            if (stage.getContext().get("ignoreUncompleted")==true && levelNumber < (orderOfExecutionsSize-1)) {
+                stage.getContext().put("levelNumber", ++levelNumber)
+                return TaskResult
+                        .builder(ExecutionStatus.REDIRECT)
+                        .context(stage.getContext())
+                        .build()
+            }
+
+            return buildTaskResult(ExecutionStatus.CANCELED, stage, multiplePipelinesOutputsList)
         }
 
         return buildTaskResult(ExecutionStatus.RUNNING, context, result)
@@ -169,26 +194,84 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
             deployStages = deployStages.stream().filter({ stage ->
                 if (ObjectUtils.isNotEmpty(stage.getOutputs())) {
                     List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(stage.getOutputs().get("manifests")), new TypeReference<List<Map<String, Object>>>() {})
-                    if (manifests.get(0).get("kind").equals("DaemonSet") ||
+                    Map<String, Object> metadata = manifests.get(0).get("metadata")
+                    String name = metadata.get("name")
+                    String appParam = pipelineExecution.getTrigger().getParameters().get("app") as String
+                    if ( (manifests.get(0).get("kind").equals("DaemonSet") ||
                             manifests.get(0).get("kind").equals("Deployment") ||
-                            manifests.get(0).get("kind").equals("StatefulSet")) {
+                            manifests.get(0).get("kind").equals("StatefulSet") ) &&
+                            ObjectUtils.isNotEmpty(appParam) &&
+                            name.contains(appParam)) {
                         return true
                     }
                     return false
                 }
                 return false
             }).collect(Collectors.toList())
+            StageExecution deployFoundStage = deployStages.stream()
+                    .reduce({ prev, current ->
+                        return prev.endTime > current.endTime ? prev : current
+                    }).orElse(null)
             pipelineExecution.getStages().clear()
+            deployStages.clear()
+            if (ObjectUtils.isNotEmpty(deployFoundStage)) {
+                deployStages.add(deployFoundStage)
+            }
             pipelineExecution.getStages().addAll(deployStages)
             filteredStagesExecutions.add(pipelineExecution)
         }
         return filteredStagesExecutions
     }
 
+    private void processOutputs(List<PipelineExecution> executions, List<RunMultiplePipelinesOutputs> multiplePipelinesOutputsList) {
+        for (PipelineExecution execution : executions) {
+            PipelineTrigger trigger = execution.getTrigger()
+            Map modifiedTrigger = objectMapper.readValue(objectMapper.writeValueAsString(trigger.parentExecution.trigger), Map.class)
+            RunMultiplePipelinesOutputs.ArtifactCreated artifactCreated = null
+            if (ObjectUtils.isNotEmpty(execution.getStages())) {
+                artifactCreated =  parseArtifact(execution.getStages().get(0))
+            }
+            RunMultiplePipelinesOutputs pipelineResults = new RunMultiplePipelinesOutputs(
+                    id: execution.getId(),
+                    executionIdentifier: modifiedTrigger.get("executionIdentifier"),
+                    startTime: execution.getStartTime(),
+                    endTime: execution.getEndTime(),
+                    status: execution.getStatus(),
+                    artifactCreated: artifactCreated
+            )
+            multiplePipelinesOutputsList.add(pipelineResults)
+        }
+    }
+
+    private RunMultiplePipelinesOutputs.ArtifactCreated parseArtifact(StageExecution deployStage) {
+        List<Map<String, Object>> createdArtifacts = (List<Map<String, Object>>) deployStage.getOutputs().get("outputs.createdArtifacts")
+        List<Map<String, Object>> manifests = (List<Map<String, Object>>) deployStage.getOutputs().get("manifests")
+
+        if (ObjectUtils.isNotEmpty(createdArtifacts) && ObjectUtils.isNotEmpty(manifests)) {
+            String account = deployStage.getContext().get("deploy.account.name")
+            String manifestName = manifests.get(0).get("kind") + " " + createdArtifacts.get(0).get("name")
+            String location = createdArtifacts.get(0).get("location")
+            return new RunMultiplePipelinesOutputs.ArtifactCreated(account: account, manifestName: manifestName, location: location)
+        }
+        return null
+    }
+
     private buildTaskResult(ExecutionStatus status, Map<String, Object> context, MonitorPipelineStage.StageResult result) {
         return TaskResult.builder(status)
                 .context(context)
                 .outputs(objectMapper.convertValue(result, Map))
+                .build()
+    }
+
+    private buildTaskResult(ExecutionStatus status, StageExecution stage, List<RunMultiplePipelinesOutputs> multiplePipelinesOutputsList) {
+        stage.getOutputs().clear()
+        stage.getContext().remove("orderOfExecutions")
+        stage.getContext().remove("runMultiplePipelinesOutputs")
+        stage.outputs.put("executionsList", multiplePipelinesOutputsList)
+        return TaskResult
+                .builder(status)
+                .context(stage.getContext())
+                .outputs(stage.getOutputs())
                 .build()
     }
 

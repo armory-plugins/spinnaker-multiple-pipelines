@@ -40,7 +40,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Stack;
 
 @Component
 public class RunMultiplePipelinesTask implements Task {
@@ -62,7 +61,9 @@ public class RunMultiplePipelinesTask implements Task {
     @Nonnull
     @Override
     public TaskResult execute(@Nonnull StageExecution stage) {
-        Map<String, Stack<App>> stackApps = objectMapper.readValue(objectMapper.writeValueAsString(stage.getContext().get("stack_apps")), new TypeReference<>() {});
+        List<List<App>> orderOfExecutions = objectMapper.readValue(objectMapper.writeValueAsString(stage.getContext().get("orderOfExecutions")), new TypeReference<>() {});
+        int levelNumber = (int) stage.getContext().get("levelNumber");
+        List<App> executionForThisLevel = orderOfExecutions.get(levelNumber);
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
         if (front50Service == null) {
@@ -79,13 +80,13 @@ public class RunMultiplePipelinesTask implements Task {
         List<Thread> threadList = new LinkedList<>();
 
         //Add executionIdentifier parameter for UI
-        for (Map.Entry<String, Stack<App>> entry : stackApps.entrySet()) {
-            entry.getValue().peek().getArguments().put("executionIdentifier", entry.getKey());
+        for (App app : executionForThisLevel) {
+            app.getArguments().put("executionIdentifier", app.getYamlIdentifier());
         }
 
         //trigger pipelines in different Threads
-        for (Stack<App> stack : stackApps.values()) {
-            Runnable triggerThis = () -> triggerThread(stack, stage, pipelines, pipelineExecutions);
+        for (App app : executionForThisLevel) {
+            Runnable triggerThis = () -> triggerThread(app, stage, pipelines, pipelineExecutions);
             threadList.add(new Thread(triggerThis));
         }
 
@@ -122,7 +123,11 @@ public class RunMultiplePipelinesTask implements Task {
         }
 
         logger.info("Returning TaskResult SUCCEEDED for RunMultiplePipelinesTask");
+        //clean from list the executions already triggered
+        orderOfExecutions.get(levelNumber).clear();
+        stage.getContext().put("orderOfExecutions", orderOfExecutions);
         stage.getContext().put("executionIds", pipelineExecutionsIds);
+        stage.getContext().put("orderOfExecutionsSize", orderOfExecutions.size());
         return TaskResult
                 .builder(returnExecutionStatus)
                 .context(stage.getContext())
@@ -130,29 +135,25 @@ public class RunMultiplePipelinesTask implements Task {
     }
 
     @SneakyThrows
-    private void triggerThread(Stack<App> stack, StageExecution stage, List<Map<String, Object>> pipelines,
+    private void triggerThread(App app, StageExecution stage, List<Map<String, Object>> pipelines,
                                List<PipelineExecution> pipelineExecutions) {
-        int i = 0;
-        while (stack.size() > i) {
-            App app = stack.pop();
-            Map<String, Object> pipelineConfig = pipelines.stream().filter(pipeline -> pipeline.get("name").equals(app.getChildPipeline())).findFirst().orElse(null);
-            logger.info("Getting pipelineConfig of childPipeline: " + pipelineConfig.get("name"));
-            Map<String, Object> pipelineConfigCopy = objectMapper.readValue(objectMapper.writeValueAsString(pipelineConfig), new TypeReference<>() {});
-            TriggerInOrder triggerInOrder = new TriggerInOrder(
-                    pipelineConfigCopy,
-                    stage,
-                    app,
-                    dependentPipelineStarter);
-            triggerInOrder.run();
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            logger.info("Adding child pipeline execution to pipelineExecutions list... {}", triggerInOrder.getPipelineExecution());
-            if (ObjectUtils.isNotEmpty(triggerInOrder.getPipelineExecution())) {
-                pipelineExecutions.add(triggerInOrder.getPipelineExecution());
-            }
+        Map<String, Object> pipelineConfig = pipelines.stream().filter(pipeline -> pipeline.get("name").equals(app.getChildPipeline())).findFirst().orElse(null);
+        logger.info("Getting pipelineConfig of childPipeline: " + pipelineConfig.get("name"));
+        Map<String, Object> pipelineConfigCopy = objectMapper.readValue(objectMapper.writeValueAsString(pipelineConfig), new TypeReference<>() {});
+        TriggerInOrder triggerInOrder = new TriggerInOrder(
+                pipelineConfigCopy,
+                stage,
+                app,
+                dependentPipelineStarter);
+        triggerInOrder.run();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        logger.info("Adding child pipeline execution to pipelineExecutions list... {}", triggerInOrder.getPipelineExecution());
+        if (ObjectUtils.isNotEmpty(triggerInOrder.getPipelineExecution())) {
+            pipelineExecutions.add(triggerInOrder.getPipelineExecution());
         }
         logger.info("TriggerThread method completed pipelineExecutions list size is " + pipelineExecutions.size());
     }

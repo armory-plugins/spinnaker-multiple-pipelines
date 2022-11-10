@@ -27,4 +27,6 @@ public class RunMultiplePipelinesContext {
 
     private boolean checkDuplicated = true;
 
+    private boolean ignoreUncompleted = false;
+
 }

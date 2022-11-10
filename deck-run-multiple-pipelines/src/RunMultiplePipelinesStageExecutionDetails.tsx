@@ -84,38 +84,18 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
 
   function findIfExecutionListCreatedArtifacts(executions:any) {
     for (const execution of executions) {
-        const result = execution.stages.filter(function(stage: any) {
-            return stage.name.startsWith("Deploy");
-        });
-        const deployStage = result.find(function(stage: any) {
-            if (stage.outputs["artifacts"] != undefined) {
-                return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
-            }
-        });
-        if (deployStage != undefined) {
-            if (deployStage.outputs["outputs.createdArtifacts"] != undefined) {
-                return true;
-            }
+        if (execution.artifactCreated != undefined) {
+            return true;
         }
     }
     return false;
   }
 
   function findIfIndividualExecutionCreatedArtifacts(execution:any) {
-      const result = execution.stages.filter(function(stage: any) {
-          return stage.name.startsWith("Deploy");
-      });
-      const deployStage = result.find(function(stage: any) {
-          if (stage.outputs["artifacts"] != undefined) {
-              return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
-          }
-      });
-      if (deployStage != undefined) {
-          if (deployStage.outputs["outputs.createdArtifacts"] != undefined) {
-              return true;
-          }
-      }
-      return false;
+     if (execution.artifactCreated != undefined) {
+       return true;
+     }
+     return false;
   }
 
     return (
@@ -153,9 +133,6 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
                             </UISref>{' '}
                     </td>
                  }
-                 {execution.name == "rollbackOnFailure" &&
-                    <td>Rollback of {execution.stages[0].context.manifestName}</td>
-                 }
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>
                  <td className="ng-binding">{duration(execution.runningTimeInMs)}</td>
                  <td><span className={"label label-default label-" + execution.status.toLowerCase()}>{execution.status}</span></td>
@@ -179,13 +156,13 @@ export function RunMultiplePipelinesStageExecutionDetails (props: IExecutionDeta
                       key={execution.id}
                       to="home.applications.application.pipelines.executionDetails.execution"
                       params={{
-                        application: execution.application,
+                        application: application.name,
                         executionId: execution.id,
                         executionParams: { application: application.name, executionId: execution.id },
                       }}
                       options={{ inherit: false, reload: 'home.applications.application.pipelines.executionDetails' }}
                     >
-                       <a>{execution.trigger.parentExecution.trigger.executionIdentifier}</a>
+                       <a>{execution.executionIdentifier}</a>
                     </UISref>{' '}
                  </td>
                  <td className="ng-binding">{timestamp(execution.startTime)}</td>

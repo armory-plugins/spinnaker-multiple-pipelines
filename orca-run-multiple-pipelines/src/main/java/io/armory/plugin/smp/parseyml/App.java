@@ -17,16 +17,13 @@
 package io.armory.plugin.smp.parseyml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.List;
 import java.util.Map;
 
-@Getter
-@Setter
-@EqualsAndHashCode
+@Data
 public class App {
     @JsonProperty("arguments")
     private Map<String, Object> arguments;
@@ -34,6 +31,10 @@ public class App {
     @JsonProperty("child_pipeline")
     private String childPipeline;
 
+    @EqualsAndHashCode.Exclude
     @JsonProperty("depends_on")
     private List<String> dependsOn;
+
+    @EqualsAndHashCode.Exclude
+    private String yamlIdentifier;
 }

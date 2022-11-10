@@ -18,14 +18,12 @@ package io.armory.plugin.smp.parseyml;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@Getter
-@Setter
+@Data
 public class Apps {
     private Map<String, Object> apps = new LinkedHashMap<>();
 

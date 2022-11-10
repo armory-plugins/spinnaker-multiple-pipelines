@@ -16,41 +16,79 @@
 
 package io.armory.plugin.smp.config;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
+import com.google.common.graph.GraphBuilder;
+import com.google.common.graph.MutableGraph;
 import io.armory.plugin.smp.parseyml.App;
 import io.armory.plugin.smp.parseyml.Apps;
 import io.armory.plugin.smp.parseyml.BundleWeb;
+import org.apache.commons.lang3.ObjectUtils;
 
-import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 
 public class UtilityHelper {
 
-    public Apps getApps(RunMultiplePipelinesContext context, Gson gson, ObjectMapper mapper) throws JsonProcessingException {
-        String json = gson.toJson(context.getYamlConfig().get(0));
-        BundleWeb bundleWeb = mapper.readValue(json, BundleWeb.class);
+    public Apps getApps(RunMultiplePipelinesContext context, ObjectMapper mapper) {
+        BundleWeb bundleWeb = mapper.convertValue(context.getYamlConfig().get(0), BundleWeb.class);
 
-        String jsonApps = gson.toJson(bundleWeb.getBundleWeb());
-        Apps apps = mapper.readValue(jsonApps, Apps.class);
-        return apps;
+        return mapper.convertValue(bundleWeb.getBundleWeb(), Apps.class);
     }
 
-    public Map<String, Stack<App>> tryWithStack(Apps apps, ObjectMapper mapper, Gson gson) throws JsonProcessingException {
-        Map<String, Stack<App>> result = new HashMap<>();
+    public MutableGraph<App> getGraphOfApps(Map<String, App> mapOfApps, List<App> initialExecutions) {
+        MutableGraph<App> graph = GraphBuilder.directed().allowsSelfLoops(false).build();
+        // set yamlIdentifier on the App Object before adding as node of graph
+        mapOfApps.replaceAll((k, v) -> {
+            v.setYamlIdentifier(k);
+            return v;
+        });
 
-        //Push the "app" to the stack
-        for (Map.Entry<String, Object> entry : apps.getApps().entrySet()) {
-            Map<String, Object> mapApp = Map.ofEntries(entry);
-            String jsonApp = gson.toJson(mapApp.get(entry.getKey()));
-            App app = mapper.readValue(jsonApp, App.class);
-            result.put(entry.getKey(), new Stack<>());
-            result.get(entry.getKey()).push(app);
+        mapOfApps.forEach((k, v) -> {
+            if (ObjectUtils.isNotEmpty(v.getDependsOn())) {
+                v.getDependsOn().forEach(appName -> {
+                    graph.putEdge(mapOfApps.get(appName), mapOfApps.get(k));
+                });
+            } else {
+                //add nodes of not connected components
+                graph.addNode(mapOfApps.get(k));
+                initialExecutions.add(mapOfApps.get(k));
+            }
+        });
+        return graph;
+    }
+
+    /**
+     * <p> Modifies orderOfExecutions using recursion
+     * <p> adds new levels searching through the graph looping on the successors of that particular node
+     * <p> before adding checks that his predecessors are already added and himself has not been added
+     */
+    public void addLevels(List<List<App>> orderOfExecutions, MutableGraph<App> graph2, List<App> allAppsInWholeQueue, int i) {
+        List<List<App>> listListOfApps = new LinkedList<>();
+        for(App app : orderOfExecutions.get(i)) {
+            if (!allAppsInWholeQueue.contains(app)) {
+                allAppsInWholeQueue.add(app);
+            }
         }
-
-        return result;
+        List<App> newLevel = new LinkedList<>();
+        for(App appI : orderOfExecutions.get(i)) {
+            graph2.successors(appI).forEach(app -> {
+                if ( allAppsInWholeQueue.containsAll(graph2.predecessors(app)) ) {
+                    if ( !allAppsInWholeQueue.contains(app) ) {
+                        if (!newLevel.contains(app)) {
+                            newLevel.add(app);
+                        }
+                    }
+                }
+            });
+        }
+        if (ObjectUtils.isNotEmpty(newLevel)) {
+            listListOfApps.add(newLevel);
+        }
+        if (ObjectUtils.isNotEmpty(listListOfApps)) {
+            orderOfExecutions.addAll(listListOfApps);
+            addLevels(orderOfExecutions, graph2, allAppsInWholeQueue, ++i);
+        }
     }
 
 }

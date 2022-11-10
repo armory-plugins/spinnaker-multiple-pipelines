@@ -46,8 +46,8 @@ spinnakerPlugin {
 dependencies {
     implementation(enforcedPlatform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
     implementation 'commons-io:commons-io'
+    implementation 'com.google.guava:guava:30.0-jre'
 
-    compileOnly 'com.google.code.gson:gson'
     compileOnly 'de.huxhorn.sulky:de.huxhorn.sulky.ulid'
     compileOnly 'io.reactivex:rxjava'
 

@@ -3,7 +3,7 @@ package io.armory.plugin.smp.tasks;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
+import com.google.common.graph.MutableGraph;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Nonnull;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 
 @Component
 public class ParsePipelinesYamlTask implements Task {
@@ -36,39 +36,47 @@ public class ParsePipelinesYamlTask implements Task {
     @Nonnull
     @Override
     public TaskResult execute(@Nonnull StageExecution stage) {
+        logger.info("starting ParsePipelinesYamlTask");
         RunMultiplePipelinesContext context = stage.mapTo(RunMultiplePipelinesContext.class);
-        Gson gson = new Gson();
         UtilityHelper utilityHelper = new UtilityHelper();
 
-        Apps apps = utilityHelper.getApps(context, gson, objectMapper);
+        Apps apps = utilityHelper.getApps(context, objectMapper);
+        Map<String, App> mapOfApps = objectMapper.convertValue(apps.getApps(), new TypeReference<>() {});
 
-        Map<String, Stack<App>> stack_apps = utilityHelper.tryWithStack(apps, objectMapper, gson);
-
-        if(context.isCheckDuplicated() && checkDuplicatedExecution(stack_apps)) {
+        if(context.isCheckDuplicated() && checkDuplicatedExecution(mapOfApps)) {
             stage.appendErrorMessage("Detected two or more duplicated arguments and calling the same child_pipeline. " +
                     "You would have the same execution");
+            stage.getContext().put("mapOfApps", mapOfApps);
             return TaskResult
                     .builder(ExecutionStatus.TERMINAL)
                     .context(stage.getContext())
                     .build();
         }
 
-        logger.info("Map of apps, detected returning success " + stack_apps.size() + " size");
-        stage.getContext().put("stack_apps", stack_apps);
+        List<App> initialExecutions = new LinkedList<>();
+        MutableGraph<App> graph = utilityHelper.getGraphOfApps(mapOfApps, initialExecutions);
+
+        List<List<App>> orderOfExecutions = new LinkedList<>();
+        orderOfExecutions.add(initialExecutions);
+        utilityHelper.addLevels(orderOfExecutions, graph, new LinkedList<>(), 0);
+
+        logger.info("Map of apps, detected returning success " + mapOfApps.size() + " size");
+        stage.getContext().put("orderOfExecutions", orderOfExecutions);
+        stage.getContext().put("levelNumber", 0);
 
         //remove yamlConfig to reduce pipeline body blob being stored
         stage.getContext().remove("yamlConfig");
+        stage.getContext().put("ignoreUncompleted", context.isIgnoreUncompleted());
         return TaskResult
                 .builder(ExecutionStatus.SUCCEEDED)
                 .context(stage.getContext())
                 .build();
     }
 
-    private boolean checkDuplicatedExecution(Map<String, Stack<App>> stack_apps) throws JsonProcessingException {
-        Map<String, Stack<App>> stack_appsCopy = objectMapper.readValue(objectMapper.writeValueAsString(stack_apps), new TypeReference<>() {});
+    private boolean checkDuplicatedExecution(Map<String, App> mapOfApps) {
         LinkedList<App> appList = new LinkedList<>();
-        for (Stack<App> stack : stack_appsCopy.values()) {
-            appList.add(stack.pop());
+        for (App app : mapOfApps.values()) {
+            appList.add(app);
         }
         if ( appList.size() != appList.stream().distinct().count()) {
             logger.warn("Detected " + (appList.size()+1 - appList.stream().distinct().count())  + " duplicated arguments and calling the same child_pipeline");

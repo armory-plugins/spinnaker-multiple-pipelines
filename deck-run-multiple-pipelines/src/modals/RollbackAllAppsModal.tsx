@@ -42,27 +42,14 @@ function RollbackAllAppsModal(props: any) {
         setLoading("block");
         setDisabled(true);
         for (const execution of props.allExecutions) {
-            const result = execution.stages.filter(function(stage: any) {
-                return stage.name.startsWith("Deploy");
-            });
-            const foundStages = result.filter(function(stage: any) {
-                if (stage.outputs["artifacts"] != undefined) {
-                    return stage.outputs["artifacts"].find( ar => ar.name.includes(execution.trigger.parameters.app));
-                }
-            });
-            if (Array.isArray(foundStages) && foundStages.length===0) {
+            const artifactCreated = execution.artifactCreated;
+            if (artifactCreated===undefined) {
                 continue;
             }
-            const foundStage = foundStages.reduce(
-                (prev, current) => {
-                    return prev.endTime > current.endTime ? prev : current
-                }
-            );
-            const deployStage = foundStage;
 
-        account = deployStage.context["deploy.account.name"];
-        manifestName = deployStage.outputs.manifests[0].kind + " " + deployStage.outputs["outputs.createdArtifacts"][0].name;
-        location = deployStage.outputs["outputs.createdArtifacts"][0].location;
+        account = artifactCreated.account;
+        manifestName = artifactCreated.manifestName;
+        location = artifactCreated.location;
         const stage: IStage = {
             "account": account,
             "manifestName": manifestName,
@@ -70,7 +57,7 @@ function RollbackAllAppsModal(props: any) {
             "numRevisionsBack": 1,
             "cloudProvider": "kubernetes",
             "mode": "static",
-            name: "Undo Rollout (Manifest) " + execution.trigger.parentExecution.trigger.executionIdentifier,
+            name: "Undo Rollout (Manifest) " + execution.executionIdentifier,
             refId: "2", // unfortunately, we kept this loose early on, so it's either a string or a number
             requisiteStageRefIds: ["1"],
             type: "undoRolloutManifest"
@@ -96,7 +83,7 @@ function RollbackAllAppsModal(props: any) {
         if (error === "") {
            const stagesArray = [preconditionStage, stage];
             const pipeline: IPipeline = {
-                  application: execution.application,
+                  application: spinnaker.application.name ,
                   id: rollbackPipelineId,
                   keepWaitingPipelines: false,
                   limitConcurrent: false,
@@ -122,7 +109,7 @@ function RollbackAllAppsModal(props: any) {
 
             if (triggerAfterSave) {
                 PipelineConfigService.triggerPipeline(
-                execution.application, "rollbackOnFailure", {id: rollbackPipelineId})
+                spinnaker.application.name, "rollbackOnFailure", {id: rollbackPipelineId})
                     .then(response => {
                         props.setOpenModal(false);
                         return response;
