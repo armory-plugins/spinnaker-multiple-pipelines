@@ -32,7 +32,7 @@ spinnakerConfig:
             plugins:
               Armory.RunMultiplePipelines:
                 enabled: true
-                version: 1.0.7
+                version: 1.0.8
           repositories:
             runMultiplePipelinesRepo:
               url: https://raw.githubusercontent.com/armory/multiple-pipelines-plugin-releases/main/plugins.json
@@ -42,7 +42,7 @@ spinnakerConfig:
           plugins:
             Armory.RunMultiplePipelines:
             enabled: true
-            version: 1.0.7
+            version: 1.0.8
             extensions:
               armory.runMultiplePipelinesStage:
                 enabled: true
@@ -60,32 +60,38 @@ The custom stage consumes a yaml under yaml-config with the next format:
 ```yaml
 bundle_web: 
   app_name: 
-    arguments: 
+    arguments: List #Optional
       - object
       - object
       - object
       - object
-    child_pipelines: string
+    child_pipelines: string #Required
+    depends_on: List #Optional
+      - string
+      - string
 ```
 Example:
 ```yaml
 bundle_web:
-  appName2:
-    arguments:
-      app: app1
-      deploymentFrezeOverride: true
-      skipCanary: true
-      tag: "1.1.0"
-      targetEnv: targetEnv
-    child_pipeline: childPipeline
   appName1:
     arguments:
       app: app2
       deploymentFrezeOverride: true
       skipCanary: true
-      tag: "1.1.0"
+      tag: 1.1.0
       targetEnv: targetEnv
     child_pipeline: childPipeline
+  appName2:
+    arguments:
+      app: app1
+      deploymentFrezeOverride: true
+      skipCanary: true
+      tag: 1.1.0
+      targetEnv: targetEnv
+    child_pipeline: childPipeline
+    depends_on:
+      - appName1
+
 ```
 
 ## yaml config specifics
@@ -110,6 +116,9 @@ bundle_web:
     - Removes restriction where object name needed a match for arguments.app -> check old readme [point two "All apps need an argument app..."](https://github.com/armory/spinnaker-multiple-pipelines/tree/ba2b3155851f05608d899864bc37064730a5dbe5#yaml-config-specifics)
     - Added a stage property "checkDuplicated" for validation when reading the yaml-config to check if you have duplicated objects(same arguments values and same child_pipeline) 
     - checkDuplicated is a hidden property by default set as true, setting it as false will mean you are allowing duplicated executions
+- Version 1.0.8:
+  - Fixed depends_on property to control order of child executions
+  - Reduces size of outputs and context for the Stage and child-trigger-ParentPipeline
 
 # Spinnaker Multiple Pipelines plugin development
 
