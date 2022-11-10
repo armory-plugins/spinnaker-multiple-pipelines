@@ -53,15 +53,25 @@ public class TriggerInOrder implements Runnable{
     @SneakyThrows
     @Override
     public void run() {
+        /*
+        Reduce size of child execution as ParentPipeline is stored under trigger
+        We removed other stages and only keep the RunMultiPipeline Stage that will trigger the child
+        Also we removed context and outputs to store less info
+        */
         ObjectMapper objectOrcaMapper = OrcaObjectMapper.getInstance();
         PipelineExecution pipelineExecutionCopy = objectOrcaMapper.readValue(objectOrcaMapper.writeValueAsString(stage.getExecution()), PipelineExecution.class);
         pipelineExecutionCopy.getStages().clear();
-        pipelineExecutionCopy.getStages().add(stage.getExecution().getStages().stream()
-                .filter(s -> s.getId().equals(stage.getId())).findFirst().get());
+        StageExecution runMultiPipelineStage = stage.getExecution().getStages().stream()
+                .filter(s -> s.getId().equals(stage.getId())).findFirst().get();
+        StageExecution runMultiPipelineStageCopy = objectOrcaMapper.convertValue(runMultiPipelineStage, StageExecution.class);
+        runMultiPipelineStageCopy.setExecution(stage.getExecution());
+        runMultiPipelineStageCopy.getContext().clear();
+        runMultiPipelineStageCopy.getOutputs().clear();
+        pipelineExecutionCopy.getStages().add(runMultiPipelineStageCopy);
 
         /*
         Create a Trigger with one extra property "executionIdentifier" to identify the child execution
-        executionIdentifier property is under trigger.parentExecution.trigger
+        ExecutionIdentifier property is under trigger.parentExecution.trigger
         Check StageExecutionsDetails for an example where is used deck-run-multiple-pipelines/src/RunMultiplePipelinesStageExecutionDetails.tsx
         */
         Map modifiedTrigger = objectOrcaMapper.readValue(objectOrcaMapper.writeValueAsString(pipelineExecutionCopy.getTrigger()), Map.class);
@@ -80,8 +90,10 @@ public class TriggerInOrder implements Runnable{
             );
         } catch (Throwable e) {
             logger.error("Entering try catch message {} ", e.getMessage());
-            stage.appendErrorMessage(e.getMessage());
-            stage.getOutputs().put("failureMessage", e.getMessage());
+            if (e.getMessage()!=null) {
+                stage.appendErrorMessage(e.getMessage());
+                stage.getOutputs().put("failureMessage", e.getMessage());
+            }
             return;
         }
         logger.info("Execution status of child pipeline " + app.getArguments().get("app") + " : {}", pipelineExecution.getStatus());

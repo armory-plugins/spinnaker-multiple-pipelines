@@ -62,7 +62,8 @@ public class RunMultiplePipelinesTask implements Task {
     @Override
     public TaskResult execute(@Nonnull StageExecution stage) {
         List<List<App>> orderOfExecutions = objectMapper.readValue(objectMapper.writeValueAsString(stage.getContext().get("orderOfExecutions")), new TypeReference<>() {});
-        List<App> executionForThisLevel = orderOfExecutions.get((Integer) stage.getContext().get("levelNumber"));
+        int levelNumber = (int) stage.getContext().get("levelNumber");
+        List<App> executionForThisLevel = orderOfExecutions.get(levelNumber);
 
         String application = (String) (stage.getContext().get("pipelineApplication") != null ? stage.getContext().get("pipelineApplication") : stage.getExecution().getApplication());
         if (front50Service == null) {
@@ -122,6 +123,9 @@ public class RunMultiplePipelinesTask implements Task {
         }
 
         logger.info("Returning TaskResult SUCCEEDED for RunMultiplePipelinesTask");
+        //clean from list the executions already triggered
+        orderOfExecutions.get(levelNumber).clear();
+        stage.getContext().put("orderOfExecutions", orderOfExecutions);
         stage.getContext().put("executionIds", pipelineExecutionsIds);
         stage.getContext().put("orderOfExecutionsSize", orderOfExecutions.size());
         return TaskResult
