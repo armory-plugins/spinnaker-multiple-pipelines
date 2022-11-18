@@ -193,16 +193,20 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
 
             deployStages = deployStages.stream().filter({ stage ->
                 if (ObjectUtils.isNotEmpty(stage.getOutputs())) {
-                    List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(stage.getOutputs().get("manifests")), new TypeReference<List<Map<String, Object>>>() {})
-                    Map<String, Object> metadata = manifests.get(0).get("metadata")
-                    String name = metadata.get("name")
-                    String appParam = pipelineExecution.getTrigger().getParameters().get("app") as String
-                    if ( (manifests.get(0).get("kind").equals("DaemonSet") ||
-                            manifests.get(0).get("kind").equals("Deployment") ||
-                            manifests.get(0).get("kind").equals("StatefulSet") ) &&
-                            ObjectUtils.isNotEmpty(appParam) &&
-                            name.contains(appParam)) {
-                        return true
+                    List<Map<String, Object>> manifests = objectMapper.readValue(
+                            objectMapper.writeValueAsString(stage.getOutputs().getOrDefault("manifests", new ArrayList())),
+                            new TypeReference<List<Map<String, Object>>>() {})
+                    if ( !manifests.isEmpty() && manifests.get(0).get("metadata")!=null ) {
+                        Map<String, Object> metadata = manifests.get(0).get("metadata")
+                        String name = metadata.get("name")
+                        String appParam = pipelineExecution.getTrigger().getParameters().get("app") as String
+                        if ((manifests.get(0).get("kind").equals("DaemonSet") ||
+                                manifests.get(0).get("kind").equals("Deployment") ||
+                                manifests.get(0).get("kind").equals("StatefulSet")) &&
+                                ObjectUtils.isNotEmpty(appParam) &&
+                                name.contains(appParam)) {
+                            return true
+                        }
                     }
                     return false
                 }
