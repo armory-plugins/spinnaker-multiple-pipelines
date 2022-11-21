@@ -11,6 +11,7 @@ Minimum tested version is 2.26.x
 | 1.0.5 <= |  2.27.x |
 | 1.0.6 <= |  2.27.x |
 | 1.0.7 <= |  2.27.x |
+| 1.0.8 <= |  2.27.x |
 
 NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
 
@@ -75,7 +76,7 @@ Example:
 bundle_web:
   appName1:
     arguments:
-      app: app2
+      app: app1
       deploymentFrezeOverride: true
       skipCanary: true
       tag: 1.1.0
@@ -83,7 +84,7 @@ bundle_web:
     child_pipeline: childPipeline
   appName2:
     arguments:
-      app: app1
+      app: app2
       deploymentFrezeOverride: true
       skipCanary: true
       tag: 1.1.0
