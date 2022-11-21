@@ -6,7 +6,8 @@ import com.netflix.spinnaker.orca.api.pipeline.OverridableTimeoutRetryableTask;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
-import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
+import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution
+import com.netflix.spinnaker.orca.clouddriver.pipeline.manifest.DeployManifestStage;
 import com.netflix.spinnaker.orca.front50.pipeline.MonitorPipelineStage
 import com.netflix.spinnaker.orca.pipeline.model.PipelineTrigger
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository
@@ -187,22 +188,33 @@ class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
         ArrayList<PipelineExecution> filteredStagesExecutions = new ArrayList<>()
         for (PipelineExecution pipelineExecution : executions) {
              List<StageExecution> deployStages = pipelineExecution.getStages().stream()
+                     .filter({ stage ->
+                         if(stage.type.equals(DeployManifestStage.PIPELINE_CONFIG_TYPE) || stage.type.equals("runJobManifest")) {
+                             return true
+                         }
+                         return false
+                     })
                      .filter({ stage -> stage.name.startsWith("Deploy") })
                      .filter({ stage -> stage.status != ExecutionStatus.SKIPPED })
                      .collect(Collectors.toList())
 
             deployStages = deployStages.stream().filter({ stage ->
                 if (ObjectUtils.isNotEmpty(stage.getOutputs())) {
-                    List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(stage.getOutputs().get("manifests")), new TypeReference<List<Map<String, Object>>>() {})
-                    Map<String, Object> metadata = manifests.get(0).get("metadata")
-                    String name = metadata.get("name")
-                    String appParam = pipelineExecution.getTrigger().getParameters().get("app") as String
-                    if ( (manifests.get(0).get("kind").equals("DaemonSet") ||
-                            manifests.get(0).get("kind").equals("Deployment") ||
-                            manifests.get(0).get("kind").equals("StatefulSet") ) &&
-                            ObjectUtils.isNotEmpty(appParam) &&
-                            name.contains(appParam)) {
-                        return true
+                    List<Map<String, Object>> manifests = objectMapper.readValue(objectMapper.writeValueAsString(
+                            stage.getOutputs().getOrDefault("manifests", stage.getOutputs().getOrDefault("outputs.manifests", new ArrayList()))),
+                            new TypeReference<List<Map<String, Object>>>() {})
+
+                    if ( !manifests.isEmpty() && manifests.get(0).get("metadata")!=null ) {
+                        Map<String, Object> metadata = manifests.get(0).get("metadata")
+                        String name = metadata.get("name")
+                        String appParam = pipelineExecution.getTrigger().getParameters().get("app") as String
+                        if ((manifests.get(0).get("kind").equals("DaemonSet") ||
+                                manifests.get(0).get("kind").equals("Deployment") ||
+                                manifests.get(0).get("kind").equals("StatefulSet")) &&
+                                ObjectUtils.isNotEmpty(appParam) &&
+                                name.contains(appParam)) {
+                            return true
+                        }
                     }
                     return false
                 }

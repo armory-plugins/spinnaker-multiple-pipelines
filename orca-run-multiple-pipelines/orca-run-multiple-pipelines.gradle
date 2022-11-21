@@ -57,6 +57,7 @@ dependencies {
     compileOnly "io.spinnaker.orca:orca-front50"
     compileOnly "io.spinnaker.orca:orca-core"
     compileOnly "io.spinnaker.orca:orca-sql"
+    compileOnly "io.spinnaker.orca:orca-clouddriver"
     compileOnly "io.spinnaker.orca:orca-interlink"
     compileOnly "org.codehaus.groovy:groovy-all"
     compileOnly "org.codehaus.groovy:groovy"

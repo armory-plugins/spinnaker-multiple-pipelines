@@ -96,7 +96,7 @@ public class TriggerInOrder implements Runnable{
             }
             return;
         }
-        logger.info("Execution status of child pipeline " + app.getArguments().get("app") + " : {}", pipelineExecution.getStatus());
+        logger.info("Triggered Execution of child pipeline " + modifiedTrigger.get("executionIdentifier"));
     }
 
     private PipelineExecution.AuthenticationDetails getUser(PipelineExecution parentPipeline) {
