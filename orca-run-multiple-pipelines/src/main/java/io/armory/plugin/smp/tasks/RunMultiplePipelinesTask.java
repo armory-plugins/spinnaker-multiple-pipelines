@@ -33,6 +33,7 @@ import lombok.SneakyThrows;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -49,7 +50,7 @@ public class RunMultiplePipelinesTask implements Task {
     private final ObjectMapper objectMapper;
 
     public RunMultiplePipelinesTask(Optional<Front50Service> front50Service,
-                                    DependentPipelineStarter dependentPipelineStarter, ObjectMapper objectMapper)  {
+                                    @Lazy DependentPipelineStarter dependentPipelineStarter, ObjectMapper objectMapper)  {
         this.front50Service = front50Service.orElse(null);
         this.dependentPipelineStarter = dependentPipelineStarter;
         this.objectMapper = objectMapper;
