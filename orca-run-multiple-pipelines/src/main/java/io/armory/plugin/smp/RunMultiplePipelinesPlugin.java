@@ -45,7 +45,7 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
     private static final List<String> ORCA_BEANS_DEPENDING_ON_PLUGIN = List.of(
             "sqlConfiguration",
             "artifactUtils",
-            "redisOrcaQueueConfiguration",
+            "sqlOrcaQueueConfiguration",
             "dependentPipelineStarter"
     );
 
