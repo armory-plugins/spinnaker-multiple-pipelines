@@ -25,8 +25,6 @@ import io.armory.plugin.smp.execution.MyExecutionLauncher;
 import io.armory.plugin.smp.tasks.MonitorMultiplePipelinesTask;
 import io.armory.plugin.smp.tasks.ParsePipelinesYamlTask;
 import io.armory.plugin.smp.tasks.RunMultiplePipelinesTask;
-import javax.annotation.Nonnull;
-
 import io.armory.plugin.smp.tasks.SaveOutputsForDetailsTask;
 import org.apache.commons.lang3.tuple.Pair;
 import org.pf4j.PluginWrapper;
@@ -37,15 +35,22 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
-    private static final String ARMORY_IAM_SPRING_LOADER_BEAN_NAME = String.format("Armory.RunMultiplePipelines.%s", SpringLoader.class.getName());
-    private static final String SQL_CONFIGURATION_BEAN_NAME = "sqlConfiguration";
+    private static final String SPRING_LOADER_BEAN_NAME = String.format("Armory.RunMultiplePipelines.%s", SpringLoader.class.getName());
+    private static final List<String> ORCA_BEANS_DEPENDING_ON_PLUGIN = List.of(
+            "sqlConfiguration",
+            "artifactUtils",
+            "redisOrcaQueueConfiguration",
+            "dependentPipelineStarter"
+    );
 
-    private Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesPlugin.class);
+    private final Logger logger = LoggerFactory.getLogger(RunMultiplePipelinesPlugin.class);
+
     /**
      * Constructor to be used by plugin manager for plugin instantiation.
      * Your plugins have to provide constructor with this exact signature to
@@ -58,7 +63,9 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
     }
 
     @Override
-    public void start() { logger.info("Starting RunMultiplePipelines plugin..."); }
+    public void start() {
+        logger.info("Starting RunMultiplePipelines plugin...");
+    }
 
     @Override
     public void stop() {
@@ -72,7 +79,7 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
 
     @Override
     public void registerBeanDefinitions(BeanDefinitionRegistry registry) {
-        List<Pair<String, Class>> beanList =  Arrays.asList(
+        List<Pair<String, Class>> beanList = Arrays.asList(
                 Pair.of("RunMultiplePipelinesStage", RunMultiplePipelinesStage.class),
                 Pair.of("RunMultiplePipelinesTask", RunMultiplePipelinesTask.class),
                 Pair.of("ParsePipelinesYamlTask", ParsePipelinesYamlTask.class),
@@ -80,7 +87,7 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
                 Pair.of("SaveOutputsForDetailsTask", SaveOutputsForDetailsTask.class),
                 Pair.of("MyExecutionLauncher", MyExecutionLauncher.class)
         );
-        beanList.forEach( curr -> {
+        beanList.forEach(curr -> {
             BeanDefinition lazyLoadCredentialsRepositoryDefinition = primaryBeanDefinitionFor(curr.getRight());
             try {
                 registry.registerBeanDefinition(curr.getLeft(), lazyLoadCredentialsRepositoryDefinition);
@@ -92,10 +99,13 @@ public class RunMultiplePipelinesPlugin extends SpringLoaderPlugin {
 
         super.registerBeanDefinitions(registry);
 
-        if (registry.containsBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)) {
-            registry.getBeanDefinition(SQL_CONFIGURATION_BEAN_NAME)
-                    .setDependsOn(ARMORY_IAM_SPRING_LOADER_BEAN_NAME);
-        }
+        ORCA_BEANS_DEPENDING_ON_PLUGIN.forEach(bean -> {
+            if (registry.containsBeanDefinition(bean)) {
+                registry
+                        .getBeanDefinition(bean)
+                        .setDependsOn(SPRING_LOADER_BEAN_NAME);
+            }
+        });
     }
 }
 
