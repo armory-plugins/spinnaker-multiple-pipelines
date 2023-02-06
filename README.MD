@@ -125,7 +125,7 @@ bundle_web:
 - Version 1.0.9:
   - Filter ChildPipeline stages by type to look for manifests values created in stage.outputs
   - Guard against NullExeption with getOrDefault and checking that manifest list is not empty [code changes](https://github.com/armory/spinnaker-multiple-pipelines/commit/e09a29de641ae3ce1fe8d8d8dd29a5ae8aacb389#diff-ebe850ed417a0494da9305d3ab2cc2b9f59f31ce07da10c252a0200c0d5d6f50R203)
-- Version 1.1.0: Fixes bugs regarding Beans.
+- Version 1.1.0: Fixes dependencies of Spring beans.
 
 # Spinnaker Multiple Pipelines plugin development
 
