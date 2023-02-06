@@ -13,6 +13,7 @@ Minimum tested version is 2.26.x
 | 1.0.7 <= |  2.27.x |
 | 1.0.8 <= |  2.27.x |
 | 1.0.9 <= |  2.27.x |
+| 1.1.0 <= |  2.28.x |
 
 NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
 
