@@ -1,18 +1,19 @@
 RunMultiplePipelines plugin adds a new custom stage to Spinnaker to trigger multiple child pipelines based on a yaml config.
 
 ### Version Compatibility
-Minimum tested version is 2.26.x
+Minimum tested version is 1.26.x
 
-| Plugin  | Spinnaker Platform |
+| Spinnaker Version  | Plugin Version |
 |:------------- | :--------- |
-| 1.0.2 <= |  2.27.x |
-| 1.0.3 <= |  2.27.x |
-| 1.0.4 <= |  2.27.x |
-| 1.0.5 <= |  2.27.x |
-| 1.0.6 <= |  2.27.x |
-| 1.0.7 <= |  2.27.x |
-| 1.0.8 <= |  2.27.x |
-| 1.0.9 <= |  2.27.x |
+| <= 1.27.x | 1.0.2 |
+| <= 1.27.x | 1.0.3 |
+| <= 1.27.x | 1.0.4 |
+| <= 1.27.x | 1.0.5 |
+| <= 1.27.x | 1.0.6 |
+| <= 1.27.x | 1.0.7 |
+| <= 1.27.x | 1.0.8 |
+| <= 1.27.x | 1.0.9 |
+| >= 1.27.x | 1.1.0 |
 
 NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
 
@@ -34,7 +35,7 @@ spinnakerConfig:
             plugins:
               Armory.RunMultiplePipelines:
                 enabled: true
-                version: 1.0.8
+                version: 1.1.0
           repositories:
             runMultiplePipelinesRepo:
               url: https://raw.githubusercontent.com/armory/multiple-pipelines-plugin-releases/main/plugins.json
@@ -44,7 +45,7 @@ spinnakerConfig:
           plugins:
             Armory.RunMultiplePipelines:
             enabled: true
-            version: 1.0.8
+            version: 1.1.0
             extensions:
               armory.runMultiplePipelinesStage:
                 enabled: true
@@ -124,6 +125,8 @@ bundle_web:
 - Version 1.0.9:
   - Filter ChildPipeline stages by type to look for manifests values created in stage.outputs
   - Guard against NullExeption with getOrDefault and checking that manifest list is not empty [code changes](https://github.com/armory/spinnaker-multiple-pipelines/commit/e09a29de641ae3ce1fe8d8d8dd29a5ae8aacb389#diff-ebe850ed417a0494da9305d3ab2cc2b9f59f31ce07da10c252a0200c0d5d6f50R203)
+- Version 1.1.0:
+  - Add compatibility with Spinnaker 1.28.x
 
 # Spinnaker Multiple Pipelines plugin development
 
