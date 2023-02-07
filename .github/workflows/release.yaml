@@ -41,15 +41,6 @@ jobs:
           echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
           echo ::set-output name=REPO::${GITHUB_REPOSITORY}
 
-      - name: Build Image
-        run: |
-          VERSION_TYPE='release' BRANCH='main' ./gradlew docker --info
-      - name: Publish image
-        run: |
-          echo "Logging in to dockerhub"
-          echo ${{ secrets.DOCKER_HUB_PASS }} | docker login --username '${{ secrets.DOCKER_HUB_USER }}' --password-stdin docker.io
-          VERSION_TYPE='release' BRANCH='main' ./gradlew dockerPush
-
       - name: create release
         id: create_release
         uses: actions/create-release@v1
