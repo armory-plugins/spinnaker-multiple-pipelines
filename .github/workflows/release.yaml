@@ -72,4 +72,4 @@ jobs:
         with:
           metadata: build/distributions/plugin-info.json
           binary_url: https://github.com/${{ steps.get_project_info.outputs.REPO }}/releases/download/${{ steps.get_project_info.outputs.VERSION }}/${{ steps.get_project_info.outputs.PROJECT }}-${{ steps.get_project_info.outputs.VERSION }}.zip
-          metadata_repo_url: https://github.com/armory/spinnaker-multiple-pipelines
+          metadata_repo_url: https://github.com/armory/spinnaker-multiple-pipelines-releases
