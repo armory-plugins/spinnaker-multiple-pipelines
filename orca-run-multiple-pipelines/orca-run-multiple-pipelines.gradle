@@ -59,7 +59,7 @@ dependencies {
     compileOnly "io.spinnaker.orca:orca-sql"
     compileOnly "io.spinnaker.orca:orca-clouddriver"
     compileOnly "io.spinnaker.orca:orca-interlink"
-    compileOnly "org.codehaus.groovy:groovy-all"
+    compileOnly "org.codehaus.groovy:groovy-all:3.0.12"
     compileOnly "org.codehaus.groovy:groovy"
 
     annotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")

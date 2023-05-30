@@ -7,6 +7,7 @@ import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.Trigger;
+import com.netflix.spinnaker.orca.config.ExecutionConfigurationProperties;
 import com.netflix.spinnaker.orca.events.BeforeInitialExecutionPersist;
 import com.netflix.spinnaker.orca.pipeline.ExecutionLauncher;
 import com.netflix.spinnaker.orca.pipeline.ExecutionRunner;
@@ -60,8 +61,17 @@ public class MyExecutionLauncher extends ExecutionLauncher {
             Clock clock,
             ApplicationEventPublisher applicationEventPublisher,
             Optional<PipelineValidator> pipelineValidator,
-            Optional<Registry> registry) {
-        super(objectMapper,executionRepository,executionRunner,clock,applicationEventPublisher,pipelineValidator,registry);
+            Optional<Registry> registry,
+            ExecutionConfigurationProperties executionConfigurationProperties) {
+        super(
+                objectMapper,
+                executionRepository,
+                executionRunner,
+                clock,
+                applicationEventPublisher,
+                pipelineValidator,
+                registry,
+                executionConfigurationProperties);
         this.objectMapper = objectMapper;
         this.executionRepository = executionRepository;
         this.executionRunner = executionRunner;
