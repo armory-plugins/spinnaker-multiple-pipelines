@@ -14,6 +14,8 @@ Minimum tested version is 1.26.x
 | <= 1.27.x | 1.0.8 |
 | <= 1.27.x | 1.0.9 |
 | >= 1.27.x | 1.1.0 |
+| >= 1.30.x | 1.1.1 |
+
 
 NOTE: The plugin is not actively tested in all compatible versions with all variants, but is expected to work in the above.
 
@@ -35,7 +37,7 @@ spinnakerConfig:
             plugins:
               Armory.RunMultiplePipelines:
                 enabled: true
-                version: 1.1.0
+                version: 1.1.1
           repositories:
             runMultiplePipelinesRepo:
               url: https://raw.githubusercontent.com/armory/multiple-pipelines-plugin-releases/main/plugins.json
@@ -45,7 +47,7 @@ spinnakerConfig:
           plugins:
             Armory.RunMultiplePipelines:
             enabled: true
-            version: 1.1.0
+            version: 1.1.1
             extensions:
               armory.runMultiplePipelinesStage:
                 enabled: true
@@ -81,7 +83,7 @@ bundle_web:
       app: app1
       deploymentFrezeOverride: true
       skipCanary: true
-      tag: 1.1.0
+      tag: 1.1.1
       targetEnv: targetEnv
     child_pipeline: childPipeline
   appName2:
@@ -89,7 +91,7 @@ bundle_web:
       app: app2
       deploymentFrezeOverride: true
       skipCanary: true
-      tag: 1.1.0
+      tag: 1.1.1
       targetEnv: targetEnv
     child_pipeline: childPipeline
     depends_on:
@@ -127,7 +129,9 @@ bundle_web:
   - Guard against NullExeption with getOrDefault and checking that manifest list is not empty [code changes](https://github.com/armory/spinnaker-multiple-pipelines/commit/e09a29de641ae3ce1fe8d8d8dd29a5ae8aacb389#diff-ebe850ed417a0494da9305d3ab2cc2b9f59f31ce07da10c252a0200c0d5d6f50R203)
 - Version 1.1.0:
   - Add compatibility with Spinnaker 1.28.x
-
+- Version 1.1.1:
+  - Add compatibility with Spinnaker 1.30.x
+  
 # Spinnaker Multiple Pipelines plugin development
 
 ## Debug a Spinnaker cluster service using tellepresence
