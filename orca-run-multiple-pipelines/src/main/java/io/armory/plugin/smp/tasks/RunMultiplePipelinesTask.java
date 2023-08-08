@@ -35,11 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Component
 public class RunMultiplePipelinesTask implements Task {
@@ -72,7 +68,7 @@ public class RunMultiplePipelinesTask implements Task {
         }
 
         List<Map<String, Object>> pipelines = front50Service.getPipelines(application, false);
-        List<PipelineExecution> pipelineExecutions = new LinkedList<>();
+        List<PipelineExecution> pipelineExecutions = Collections.synchronizedList(new ArrayList<>());
         List<String> pipelineExecutionsIds = new ArrayList<>();
         ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
