@@ -89,6 +89,12 @@ dependencies {
     testRuntime 'org.junit.jupiter:junit-jupiter-api'
     testRuntime 'org.junit.jupiter:junit-jupiter-engine'
     testRuntime "org.junit.platform:junit-platform-commons"
+
+    testImplementation "org.spockframework:spock-core"
+    testImplementation "cglib:cglib-nodep"
+    testImplementation "org.objenesis:objenesis"
+    testImplementation "org.codehaus.groovy:groovy"
+    testRuntimeOnly "org.junit.vintage:junit-vintage-engine"
 }
 
 tasks.withType(Test) {
