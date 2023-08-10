@@ -2,10 +2,13 @@ package io.armory.plugin.smp.execution;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.spectator.api.Registry;
+import com.netflix.spinnaker.kork.exceptions.HasAdditionalAttributes;
+import com.netflix.spinnaker.kork.exceptions.SystemException;
 import com.netflix.spinnaker.kork.exceptions.UserException;
-import com.netflix.spinnaker.kork.web.exceptions.ValidationException;
+import com.netflix.spinnaker.kork.plugins.api.spring.ExposeToApp;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
+import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.Trigger;
 import com.netflix.spinnaker.orca.config.ExecutionConfigurationProperties;
 import com.netflix.spinnaker.orca.events.BeforeInitialExecutionPersist;
@@ -20,13 +23,9 @@ import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
 import org.apache.commons.lang3.text.WordUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Component;
+import org.springframework.security.access.AccessDeniedException;
 
-import java.io.IOException;
-import java.io.Serializable;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -36,12 +35,12 @@ import java.util.stream.Collectors;
 import static com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus.TERMINAL;
 import static com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType.PIPELINE;
 import static java.lang.Boolean.parseBoolean;
+import static java.lang.Integer.parseInt;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
-@Component
-@Primary
+@ExposeToApp
 public class MyExecutionLauncher extends ExecutionLauncher {
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -50,10 +49,9 @@ public class MyExecutionLauncher extends ExecutionLauncher {
     private final ExecutionRunner executionRunner;
     private final Clock clock;
     private final Optional<PipelineValidator> pipelineValidator;
-    private final Optional<Registry> registry;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ExecutionConfigurationProperties executionConfigurationProperties;
 
-    @Autowired
     public MyExecutionLauncher(
             ObjectMapper objectMapper,
             ExecutionRepository executionRepository,
@@ -78,19 +76,21 @@ public class MyExecutionLauncher extends ExecutionLauncher {
         this.clock = clock;
         this.applicationEventPublisher = applicationEventPublisher;
         this.pipelineValidator = pipelineValidator;
-        this.registry = registry;
+        this.executionConfigurationProperties = executionConfigurationProperties;
     }
 
-    public PipelineExecution start(ExecutionType type, String configJson) throws Exception {
-        final PipelineExecution execution = parse(type, configJson);
-
+    @Override
+    public PipelineExecution start(ExecutionType type, Map<String, Object> config) {
+        PipelineExecution execution = parse(type, config);
         PipelineExecution existingExecution = checkForCorrelatedExecution(execution);
+
         if (existingExecution != null) {
-            if (configJson.contains("correlationId") && configJson.contains("parentExecution")
-                    && configJson.contains("\"type\":\"runMultiplePipelines\"")) {
+            if (config.containsKey("correlationId") && config.containsKey("parentExecution")
+                    && config.containsKey("\"type\":\"runMultiplePipelines\"")) {
                 existingExecution = null;
             }
         }
+
         if (existingExecution != null) {
             return existingExecution;
         }
@@ -100,6 +100,7 @@ public class MyExecutionLauncher extends ExecutionLauncher {
         persistExecution(execution);
 
         try {
+            checkIfPipelineCanBeStarted(execution);
             start(execution);
         } catch (Throwable t) {
             handleStartupFailure(execution, t);
@@ -114,9 +115,9 @@ public class MyExecutionLauncher extends ExecutionLauncher {
      *
      * @param e the exception that was thrown during pipeline validation
      */
-    public PipelineExecution fail(ExecutionType type, String configJson, Exception e)
-            throws Exception {
-        final PipelineExecution execution = parse(type, configJson);
+    @Override
+    public PipelineExecution fail(ExecutionType type, Map<String, Object> config, Exception e) {
+        final PipelineExecution execution = parse(type, config);
 
         persistExecution(execution);
 
@@ -131,6 +132,7 @@ public class MyExecutionLauncher extends ExecutionLauncher {
         }
     }
 
+    @Override
     public PipelineExecution start(PipelineExecution execution) {
         executionRunner.start(execution);
         return execution;
@@ -148,13 +150,10 @@ public class MyExecutionLauncher extends ExecutionLauncher {
                     executionRepository.retrieveByCorrelationId(
                             execution.getType(), trigger.getCorrelationId());
             log.info(
-                    "Found pre-existing "
-                            + execution.getType()
-                            + " by correlation id (id: "
-                            + o.getId()
-                            + ", correlationId: "
-                            + trigger.getCorrelationId()
-                            + ")");
+                    "Found pre-existing {} by correlation id (id: {}, correlationId: {})",
+                    execution.getType(),
+                    o.getId(),
+                    trigger.getCorrelationId());
             return o;
         } catch (ExecutionNotFoundException e) {
             // Swallow
@@ -164,16 +163,16 @@ public class MyExecutionLauncher extends ExecutionLauncher {
     }
 
     @SuppressWarnings("unchecked")
-    private PipelineExecution handleStartupFailure(PipelineExecution execution, Throwable failure) {
+    private void handleStartupFailure(PipelineExecution execution, Throwable failure) {
         final String canceledBy = "system";
         String reason = "Failed on startup: " + failure.getMessage();
 
-        if (failure instanceof ValidationException) {
-            ValidationException validationException = (ValidationException) failure;
-            if (validationException.getAdditionalAttributes().containsKey("errors")) {
+        if (failure instanceof HasAdditionalAttributes) {
+            HasAdditionalAttributes exceptionWithAttributes = (HasAdditionalAttributes) failure;
+            if (exceptionWithAttributes.getAdditionalAttributes().containsKey("errors")) {
                 List<Map<String, Object>> errors =
                         ((List<Map<String, Object>>)
-                                validationException.getAdditionalAttributes().get("errors"));
+                                exceptionWithAttributes.getAdditionalAttributes().get("errors"));
                 reason +=
                         errors.stream()
                                 .flatMap(
@@ -199,30 +198,32 @@ public class MyExecutionLauncher extends ExecutionLauncher {
         execution.updateStatus(TERMINAL);
         executionRepository.updateStatus(execution);
         executionRepository.cancel(execution.getType(), execution.getId(), canceledBy, reason);
-        return executionRepository.retrieve(execution.getType(), execution.getId());
     }
 
-    private PipelineExecution parse(ExecutionType type, String configJson) throws IOException {
-        if (type == PIPELINE) {
-            return parsePipeline(configJson);
-        } else {
-            return parseOrchestration(configJson);
+    private PipelineExecution parse(ExecutionType type, Map<String, Object> config) {
+        switch (type) {
+            case PIPELINE:
+                return parsePipeline(config);
+            case ORCHESTRATION:
+                return parseOrchestration(config);
+            default:
+                throw new SystemException("Unexpected execution type " + type.toString());
         }
     }
 
-    private PipelineExecution parsePipeline(String configJson) throws IOException {
+    private PipelineExecution parsePipeline(Map<String, Object> config) {
         // TODO: can we not just annotate the class properly to avoid all this?
-        Map<String, Serializable> config = objectMapper.readValue(configJson, Map.class);
         return new PipelineBuilder(getString(config, "application"))
                 .withId(getString(config, "executionId"))
                 .withName(getString(config, "name"))
                 .withPipelineConfigId(getString(config, "id"))
                 .withTrigger(objectMapper.convertValue(config.get("trigger"), Trigger.class))
-                .withStages((List<Map<String, Object>>) config.get("stages"))
+                .withStages(getList(config, "stages"))
                 .withLimitConcurrent(getBoolean(config, "limitConcurrent"))
+                .withMaxConcurrentExecutions(getInt(config, "maxConcurrentExecutions"))
                 .withKeepWaitingPipelines(getBoolean(config, "keepWaitingPipelines"))
-                .withNotifications((List<Map<String, Object>>) config.get("notifications"))
-                .withInitialConfig((Map<String, Object>) config.get("initialConfig"))
+                .withNotifications(getList(config, "notifications"))
+                .withInitialConfig(getMap(config, "initialConfig"))
                 .withOrigin(getString(config, "origin"))
                 .withStartTimeExpiry(getString(config, "startTimeExpiry"))
                 .withSource(
@@ -231,13 +232,11 @@ public class MyExecutionLauncher extends ExecutionLauncher {
                                 : objectMapper.convertValue(
                                 config.get("source"), PipelineExecution.PipelineSource.class))
                 .withSpelEvaluator(getString(config, "spelEvaluator"))
-                .withTemplateVariables((Map<String, Object>) config.get("templateVariables"))
+                .withTemplateVariables(getMap(config, "templateVariables"))
                 .build();
     }
 
-    private PipelineExecution parseOrchestration(String configJson) throws IOException {
-        @SuppressWarnings("unchecked")
-        Map<String, Serializable> config = objectMapper.readValue(configJson, Map.class);
+    private PipelineExecution parseOrchestration(Map<String, Object> config) {
         PipelineExecution orchestration =
                 PipelineExecutionImpl.newOrchestration(getString(config, "application"));
         if (config.containsKey("name")) {
@@ -269,9 +268,12 @@ public class MyExecutionLauncher extends ExecutionLauncher {
         }
 
         orchestration.setBuildTime(clock.millis());
+
+        PipelineExecution.AuthenticationDetails auth = new PipelineExecution.AuthenticationDetails();
+        auth.setUser(getString(config, "user"));
+
         orchestration.setAuthentication(
-                PipelineExecutionImpl.AuthenticationHelper.build()
-                        .orElse(new PipelineExecution.AuthenticationDetails()));
+                PipelineExecutionImpl.AuthenticationHelper.build().orElse(auth));
         orchestration.setOrigin((String) config.getOrDefault("origin", "unknown"));
         orchestration.setStartTimeExpiry((Long) config.get("startTimeExpiry"));
         orchestration.setSpelEvaluator(getString(config, "spelEvaluator"));
@@ -285,26 +287,96 @@ public class MyExecutionLauncher extends ExecutionLauncher {
         executionRepository.store(execution);
     }
 
-    private final boolean getBoolean(Map<String, ?> map, String key) {
+    private static boolean getBoolean(Map<String, ?> map, String key) {
         return parseBoolean(getString(map, key));
     }
 
-    private final String getString(Map<String, ?> map, String key) {
+    private static int getInt(Map<String, ?> map, String key) {
+        return map.containsKey(key) ? parseInt(getString(map, key)) : 0;
+    }
+
+    private static String getString(Map<String, ?> map, String key) {
         return map.containsKey(key) ? map.get(key).toString() : null;
     }
 
-    private final <K, V> Map<K, V> getMap(Map<String, ?> map, String key) {
+    private static <K, V> Map<K, V> getMap(Map<String, ?> map, String key) {
         Map<K, V> result = (Map<K, V>) map.get(key);
         return result == null ? emptyMap() : result;
     }
 
-    private final List<Map<String, Object>> getList(Map<String, ?> map, String key) {
+    private static List<Map<String, Object>> getList(Map<String, ?> map, String key) {
         List<Map<String, Object>> result = (List<Map<String, Object>>) map.get(key);
         return result == null ? emptyList() : result;
     }
 
-    private final <E extends Enum<E>> E getEnum(Map<String, ?> map, String key, Class<E> type) {
+    private static <E extends Enum<E>> E getEnum(Map<String, ?> map, String key, Class<E> type) {
         String value = (String) map.get(key);
         return value != null ? Enum.valueOf(type, value) : null;
+    }
+
+    /**
+     * for security reasons, we only want to allow a few explicitly configured ad-hoc operations.
+     * Every other operation should be blocked. Depending on how the allowed ad-hoc operations are
+     * configured, we also check to see if the user performing this action is allowed to run this
+     * operation
+     *
+     * @param execution pipeline execution
+     * @throws AccessDeniedException if the orchestration action is explicitly disabled or if the user
+     *     is not allowed to perform that action
+     */
+    private void checkIfPipelineCanBeStarted(PipelineExecution execution) {
+        // for now only orchestration execution types are checked to see if they need to be blocked
+        if (execution.getType() == ExecutionType.ORCHESTRATION
+                && executionConfigurationProperties.isBlockOrchestrationExecutions()) {
+            for (StageExecution stage : execution.getStages()) {
+                // get details about the orchestration type from the config
+                Optional<ExecutionConfigurationProperties.OrchestrationExecution> orchestrationType =
+                        this.executionConfigurationProperties.getAllowedOrchestrationType(stage.getType());
+
+                // if we don't find the orchestration type in the config, that means it is configured to
+                // be disabled
+                if (orchestrationType.isEmpty()) {
+                    log.warn(
+                            "ad-hoc execution of type: {} has been explicitly disabled. Such actions can only be run "
+                                    + "via spinnaker pipelines",
+                            stage.getType());
+                    throw new AccessDeniedException(
+                            "ad-hoc execution of type: " + stage.getType() + " has been explicitly disabled");
+                }
+
+                // if all users are allowed to execute this orchestration task, then check is complete
+                if (orchestrationType.get().isAllowAllUsers()) {
+                    return;
+                }
+
+                // get user info to check if the user is permitted to perform this orchestration action
+                String user = stage.getExecution().getAuthentication().getUser();
+                if (user == null || user.isEmpty()) {
+                    log.warn(
+                            "user details could not be found for ad-hoc execution of type: {}. This execution will "
+                                    + "be blocked",
+                            stage.getType());
+                    throw new AccessDeniedException(
+                            "user details could not be found for ad-hoc execution of type: "
+                                    + stage.getType()
+                                    + ". This execution will be blocked");
+                }
+
+                // check if the configured orchestration type is configured to only allow a subset of
+                // permitted users, and if this user is in that set
+                if (!orchestrationType.get().getPermittedUsers().contains(user)) {
+                    log.warn(
+                            "ad-hoc execution of type: {} has been explicitly disabled. Such actions can only be run "
+                                    + "by a subset of users, of which {} is not a member.",
+                            stage.getType(),
+                            user);
+                    throw new AccessDeniedException(
+                            "ad-hoc execution of type: "
+                                    + stage.getType()
+                                    + " has been disabled for user: "
+                                    + user);
+                }
+            }
+        }
     }
 }
