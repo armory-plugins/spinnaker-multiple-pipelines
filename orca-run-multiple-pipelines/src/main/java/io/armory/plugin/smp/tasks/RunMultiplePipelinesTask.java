@@ -18,6 +18,7 @@ package io.armory.plugin.smp.tasks;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.netflix.spinnaker.kork.plugins.api.spring.ExposeToApp;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
@@ -25,9 +26,6 @@ import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import com.netflix.spinnaker.orca.front50.DependentPipelineStarter;
 import com.netflix.spinnaker.orca.front50.Front50Service;
-
-import javax.annotation.Nonnull;
-
 import io.armory.plugin.smp.parseyml.App;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.ObjectUtils;
@@ -35,8 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 
+@ExposeToApp
 @Component
 public class RunMultiplePipelinesTask implements Task {
 
@@ -67,9 +67,9 @@ public class RunMultiplePipelinesTask implements Task {
             throw new UnsupportedOperationException("Cannot start a stored pipeline, front50 is not enabled. Fix this by setting front50.enabled: true");
         }
 
-        List<Map<String, Object>> pipelines = front50Service.getPipelines(application, false);
+        List<Map<String, Object>> pipelines = Collections.synchronizedList(front50Service.getPipelines(application, false));
         List<PipelineExecution> pipelineExecutions = Collections.synchronizedList(new ArrayList<>());
-        List<String> pipelineExecutionsIds = new ArrayList<>();
+        List<String> pipelineExecutionsIds = Collections.synchronizedList(new ArrayList<>());
         ExecutionStatus returnExecutionStatus = ExecutionStatus.SUCCEEDED;
 
         //create a linked list of Threads to join on main thread
@@ -142,11 +142,6 @@ public class RunMultiplePipelinesTask implements Task {
                 app,
                 dependentPipelineStarter);
         triggerInOrder.run();
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         logger.info("Adding child pipeline execution to pipelineExecutions list... {}", triggerInOrder.getPipelineExecution());
         if (ObjectUtils.isNotEmpty(triggerInOrder.getPipelineExecution())) {
             pipelineExecutions.add(triggerInOrder.getPipelineExecution());
