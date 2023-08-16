@@ -1,33 +1,34 @@
 package io.armory.plugin.smp.tasks
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.netflix.spinnaker.orca.api.pipeline.OverridableTimeoutRetryableTask;
-import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
-import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
-import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
+import com.netflix.spinnaker.kork.plugins.api.spring.ExposeToApp
+import com.netflix.spinnaker.orca.api.pipeline.OverridableTimeoutRetryableTask
+import com.netflix.spinnaker.orca.api.pipeline.TaskResult
+import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus
+import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution
-import com.netflix.spinnaker.orca.clouddriver.pipeline.manifest.DeployManifestStage;
+import com.netflix.spinnaker.orca.clouddriver.pipeline.manifest.DeployManifestStage
 import com.netflix.spinnaker.orca.front50.pipeline.MonitorPipelineStage
 import com.netflix.spinnaker.orca.pipeline.model.PipelineTrigger
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository
 import io.armory.plugin.smp.config.RunMultiplePipelinesOutputs
 import org.apache.commons.lang3.ObjectUtils
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Component
 
 import java.util.concurrent.TimeUnit
-import java.util.stream.Collectors;
+import java.util.stream.Collectors
 
-import static com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType.PIPELINE;
-
+import static com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType.PIPELINE
 /**
  * This is a copy of <a href="https://github.com/spinnaker/orca/blob/b9077fb8187f6fb9612681b528bd760ef50e4534/orca-front50/src/main/groovy/com/netflix/spinnaker/orca/front50/tasks/MonitorPipelineTask.groovy">MonitorPipelineTask</a>
  * <p> changes -> pass this condition (stage.type == MonitorPipelineStage.PIPELINE_CONFIG_TYPE) </p>
  * <p> get and update PipelinesExecutions list to refer to it in outputs </p>
  */
+@ExposeToApp
 @Component
 class MonitorMultiplePipelinesTask implements OverridableTimeoutRetryableTask {
 

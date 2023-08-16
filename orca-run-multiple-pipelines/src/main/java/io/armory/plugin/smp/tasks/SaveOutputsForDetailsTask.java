@@ -1,5 +1,6 @@
 package io.armory.plugin.smp.tasks;
 
+import com.netflix.spinnaker.kork.plugins.api.spring.ExposeToApp;
 import com.netflix.spinnaker.orca.api.pipeline.Task;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Nonnull;
 import java.util.List;
 
+@ExposeToApp
 @Component
 public class SaveOutputsForDetailsTask implements Task {
 

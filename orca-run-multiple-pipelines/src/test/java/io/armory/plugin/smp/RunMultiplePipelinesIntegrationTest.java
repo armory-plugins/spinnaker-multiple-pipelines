@@ -1,6 +1,7 @@
 package io.armory.plugin.smp;
 
 import com.netflix.spinnaker.orca.api.pipeline.graph.StageDefinitionBuilder;
+import io.armory.plugin.smp.stages.RunMultiplePipelinesStage;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
