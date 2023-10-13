@@ -7,6 +7,8 @@ import com.netflix.spinnaker.orca.pipeline.model.StageExecutionImpl;
 import io.armory.plugin.smp.config.RunMultiplePipelinesOutputs;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.List;
 import static com.netflix.spinnaker.orca.api.pipeline.models.ExecutionType.PIPELINE;
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(MockitoExtension.class)
 public class SaveOutputsForDetailsTaskTest {
 
     private PipelineExecutionImpl pipeline;
