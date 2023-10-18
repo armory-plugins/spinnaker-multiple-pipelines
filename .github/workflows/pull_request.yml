@@ -1,0 +1,55 @@
+name: "PR: SMP plugin"
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    env:
+      ORG_GRADLE_PROJECT_artifactory_token: '${{secrets.ARTIFACTORY_TOKEN}}'
+
+    steps:
+      - name: Fix up git URLs
+        run: echo -e '[url "https://github.com/"]\n  insteadOf = "git://github.com/"' >> ~/.gitconfig
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Test
+        run: ./gradlew test
+
+      - name: Add coverage comment to PR
+        id: jacoco
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: |
+            ${{ github.workspace }}/**/build/reports/jacoco/test/jacocoTestReport.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 90
+          title: Java Code Coverage
+          update-comment: true
+
+      - name: Fail PR if changed files coverage is less than 90%
+        if: ${{ steps.jacoco.outputs.coverage-changed-files < 90.0 }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.setFailed('Changed files coverage is less than 90%!')
+
+      - name: Build
+        run: ./gradlew releaseBundle
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: dist
+          path: build/distributions

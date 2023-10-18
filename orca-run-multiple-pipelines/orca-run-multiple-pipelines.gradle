@@ -1,9 +1,10 @@
 plugins {
-    id 'java'
-    id 'maven-publish'
+    id "java"
+    id "maven-publish"
     id "io.spinnaker.plugin.service-extension"
     id "kotlin"
     id "groovy"
+    id "jacoco"
 }
 
 compileGroovy {
@@ -44,59 +45,66 @@ spinnakerPlugin {
 }
 
 dependencies {
-    implementation(enforcedPlatform("io.spinnaker.orca:orca-bom:${orcaVersion}"))
-    implementation 'commons-io:commons-io'
+    // Implementation Dependencies
     implementation 'com.google.guava:guava:30.0-jre'
+    implementation enforcedPlatform("io.spinnaker.orca:orca-bom:${orcaVersion}")
 
+    // CompileOnly Dependencies
     compileOnly 'de.huxhorn.sulky:de.huxhorn.sulky.ulid'
     compileOnly 'io.reactivex:rxjava'
-
-    compileOnly "org.pf4j:pf4j"
-    compileOnly "io.spinnaker.kork:kork-plugins-spring-api"
     compileOnly "io.spinnaker.orca:orca-api"
     compileOnly "io.spinnaker.orca:orca-front50"
     compileOnly "io.spinnaker.orca:orca-core"
     compileOnly "io.spinnaker.orca:orca-sql"
     compileOnly "io.spinnaker.orca:orca-clouddriver"
     compileOnly "io.spinnaker.orca:orca-interlink"
-    compileOnly "org.codehaus.groovy:groovy-all:3.0.12"
-    compileOnly "org.codehaus.groovy:groovy"
-
-    annotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
-    testAnnotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
-
     compileOnly "io.spinnaker.kork:kork-web"
     compileOnly "io.spinnaker.kork:kork-artifacts"
     compileOnly "io.spinnaker.kork:kork-expressions"
     compileOnly "io.spinnaker.kork:kork-moniker"
     compileOnly "io.spinnaker.kork:kork-plugins"
+    compileOnly "io.spinnaker.kork:kork-plugins-spring-api"
     compileOnly "io.spinnaker.kork:kork-telemetry"
     compileOnly "io.spinnaker.kork:kork-sql"
-
+    compileOnly "io.spinnaker.orca:orca-api"
+    compileOnly "org.codehaus.groovy:groovy-all:3.0.12"
+    compileOnly "org.codehaus.groovy:groovy"
     compileOnly "org.projectlombok:lombok"
+    compileOnly "org.pf4j:pf4j"
+
+    // Annotation Processor Dependencies
+    annotationProcessor platform("io.spinnaker.orca:orca-bom:$orcaVersion")
     annotationProcessor "org.projectlombok:lombok"
-    annotationProcessor "org.pf4j:pf4j"
-    testAnnotationProcessor "org.projectlombok:lombok"
 
-    testImplementation group: 'io.spinnaker.orca', name: 'orca-api'
-    testImplementation group: 'io.spinnaker.orca', name: 'orca-api-tck'
-    testImplementation group: 'io.spinnaker.orca', name: 'orca-queue'
-    testImplementation group: 'io.spinnaker.orca', name: 'orca-front50'
-    testImplementation group: 'io.spinnaker.kork', name: 'kork-plugins-tck'
-
-    testCompile group: 'org.projectlombok', name: 'lombok'
-
-    testRuntime 'org.junit.jupiter:junit-jupiter-api'
-    testRuntime 'org.junit.jupiter:junit-jupiter-engine'
-    testRuntime "org.junit.platform:junit-platform-commons"
-
+    // Test Implementation Dependencies
+    testImplementation "io.spinnaker.orca:orca-api"
+    testImplementation "io.spinnaker.orca:orca-api-tck"
+    testImplementation "io.spinnaker.orca:orca-queue"
+    testImplementation "io.spinnaker.orca:orca-front50"
+    testImplementation "io.spinnaker.kork:kork-plugins-tck"
+    testImplementation "io.spinnaker.kork:kork-plugins-spring-api"
     testImplementation "org.spockframework:spock-core"
-    testImplementation "cglib:cglib-nodep"
-    testImplementation "org.objenesis:objenesis"
-    testImplementation "org.codehaus.groovy:groovy"
-    testRuntimeOnly "org.junit.vintage:junit-vintage-engine"
+    testImplementation ("org.mockito:mockito-core:5.6.0") { force = true }
+    testImplementation ("org.mockito:mockito-junit-jupiter:5.6.0") { force = true }
+    testImplementation ("net.bytebuddy:byte-buddy:1.14.9") { force = true }
+    testImplementation ("net.bytebuddy:byte-buddy-agent:1.14.9") { force = true }
+
+    // Test Compile Dependencies
+    testCompile "org.projectlombok:lombok"
 }
 
 tasks.withType(Test) {
     useJUnitPlatform()
+}
+
+test {
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required = true
+    }
 }
