@@ -1,1 +1,15 @@
 apply plugin: "io.spinnaker.plugin.ui-extension"
+
+task yarnInstall(type: Exec) {
+    workingDir project.projectDir
+    commandLine 'yarn', 'install'
+}
+
+task jestTest(type: Exec, dependsOn: yarnInstall) {
+    workingDir project.projectDir
+    commandLine 'yarn', 'test'
+}
+
+test {
+    finalizedBy jestTest
+}

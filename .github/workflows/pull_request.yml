@@ -23,10 +23,15 @@ jobs:
         with:
           java-version: 11
 
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
       - name: Test
         run: ./gradlew test
 
-      - name: Add coverage comment to PR
+      - name: Add Java coverage comment to PR
         id: jacoco
         uses: madrapps/jacoco-report@v1.6.1
         with:
@@ -44,6 +49,13 @@ jobs:
         with:
           script: |
             core.setFailed('Changed files coverage is less than 90%!')
+
+      - name: Add JavaScript coverage comment to PR
+        uses: MishaKav/jest-coverage-comment@v1.0.23
+        with:
+          title: JavaScript Code Coverage
+          coverage-summary-path: ./deck-run-multiple-pipelines/coverage/coverage-summary.json
+          coverage-path: ./deck-run-multiple-pipelines/coverage/coverage.txt
 
       - name: Build
         run: ./gradlew releaseBundle
