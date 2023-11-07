@@ -22,7 +22,7 @@ NOTE: The plugin is not actively tested in all compatible versions with all vari
 Check [release notes](https://github.com/armory/spinnaker-multiple-pipelines#release-notes) for more info
 
 # Installation & Configuration
-Note: alternative you can consume the plugin using this example patch as well. [example](https://github.com/armory/multiple-pipelines-plugin-releases/blob/main/plugins/custom/patch-plugin-multiple-pipelines-2.yml)
+
 1. Identify the released version of the RunMultiplePipelines plugin you wish to install. Official releases are found [here](https://github.com/armory/multiple-pipelines-plugin-releases).
 2. In your Spinnaker configuration, add the following repository & plugin configuration. [example](https://github.com/armory/multiple-pipelines-plugin-releases/blob/main/plugins/custom/patch-plugin-multiple-pipelines.yml)
 ```yaml
@@ -131,7 +131,7 @@ bundle_web:
   - Add compatibility with Spinnaker 1.28.x
 - Version 1.1.1:
   - Add compatibility with Spinnaker 1.30.x
-  
+
 # Spinnaker Multiple Pipelines plugin development
 
 ## Debug a Spinnaker cluster service using tellepresence
